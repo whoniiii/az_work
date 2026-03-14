@@ -72,10 +72,10 @@ python "$DIAGRAM_SCRIPT" \
 [
   {"id": "openai", "name": "Azure OpenAI Service", "type": "openai", "sku": "S0", "private": true,
    "details": ["gpt-4o (30K TPM)", "text-embedding-3-large (120K TPM)"]},
-  {"id": "ai_foundry_hub", "name": "Microsoft Foundry Hub", "type": "ai_hub", "sku": "Standard", "private": true,
-   "details": ["OpenAI 연결", "AI Search 연결"]},
-  {"id": "ai_foundry_project", "name": "Microsoft Foundry Project", "type": "ai_hub", "sku": "Standard", "private": true,
-   "details": ["Hub 하위 프로젝트"]},
+  {"id": "foundry", "name": "Microsoft Foundry", "type": "ai_foundry", "sku": "S0 (AIServices)", "private": true,
+   "details": ["kind: AIServices", "gpt-4o 배포", "text-embedding-3-large 배포"]},
+  {"id": "foundry_project", "name": "Foundry Project", "type": "ai_hub", "sku": "Project", "private": true,
+   "details": ["Foundry resource 하위 프로젝트", "에이전트/평가 작업 공간"]},
   {"id": "search", "name": "Azure AI Search", "type": "search", "sku": "Standard", "private": true,
    "details": ["Semantic Ranking 활성화", "벡터 검색 지원"]},
   {"id": "storage", "name": "Azure Data Lake Storage Gen2", "type": "storage", "sku": "Standard ZRS", "private": true,
@@ -85,12 +85,15 @@ python "$DIAGRAM_SCRIPT" \
 ]
 ```
 
-> **서비스 명칭 규칙**: 반드시 최신 공식 Azure 서비스 명칭을 사용한다.
-> - Azure AI Studio → **Microsoft Foundry** (2024년 11월 리브랜딩)
-> - Microsoft Foundry Hub → **Microsoft Foundry Hub**
-> - AI Search → **Azure AI Search**
-> - ADLS Gen2 → **Azure Data Lake Storage Gen2**
-> - Azure OpenAI → **Azure OpenAI Service**
+> **서비스 명칭 및 아키텍처 규칙**: 반드시 최신 공식 명칭과 구조를 사용한다.
+> - **Microsoft Foundry** = `Microsoft.CognitiveServices/accounts` + `kind: 'AIServices'` (최상위)
+>   - 모델(gpt-4o 등)은 Foundry resource 레벨에서 배포, Project에서 공유 사용
+>   - `allowProjectManagement: true` 없으면 Project 생성 불가
+> - **Foundry Project** = `Microsoft.CognitiveServices/accounts/projects` (Foundry의 서브리소스)
+> - **Azure OpenAI Service** (`kind: 'OpenAI'`) = 레거시. Foundry(AIServices)의 서브셋. 신규 개발 시 Microsoft Foundry 사용
+> - **Hub 기반** (`Microsoft.MachineLearningServices`) = 레거시. ML/오픈소스 모델, Serverless API 필요 시에만
+> - **Azure AI Search** — 정확한 명칭
+> - **Azure Data Lake Storage Gen2** — 정확한 명칭 (ADLS Gen2)
 
 **connections JSON 형식:**
 ```json
@@ -333,10 +336,10 @@ az group delete --name <RG_NAME> --yes --no-wait
 
 | 시나리오 | 서비스 조합 | Private Endpoint |
 |---------|-----------|-----------------|
-| RAG 챗봇 | Azure OpenAI Service + Azure AI Search + Azure Data Lake Storage Gen2 + Azure Key Vault | account, searchService, dfs/blob, vault |
-| Microsoft Foundry | Microsoft Foundry Hub + Microsoft Foundry Project + Azure OpenAI Service + Azure AI Search + Azure Data Lake Storage Gen2 + Azure Key Vault + Application Insights | amlworkspace, account, searchService, dfs, vault |
+| RAG 챗봇 | Microsoft Foundry (AIServices) + Foundry Project + Azure AI Search + Azure Data Lake Storage Gen2 + Azure Key Vault | account, searchService, dfs/blob, vault |
+| Microsoft Foundry (full) | Microsoft Foundry (AIServices) + Foundry Project + Azure AI Search + Azure Data Lake Storage Gen2 + Azure Key Vault | account, searchService, dfs, vault |
 | Data Lakehouse | Microsoft Fabric + Azure Data Lake Storage Gen2 + Azure Data Factory + (Azure AI Search) | dfs, blob |
-| ML Platform | Azure Machine Learning + Azure Data Lake Storage Gen2 + Azure Key Vault + Azure Container Registry | amlworkspace, dfs, vault, registry |
+| ML Platform (레거시 Hub) | Azure AI Hub + Hub Project + Azure AI Search + Azure Data Lake Storage Gen2 + Azure Key Vault | amlworkspace, searchService, dfs, vault |
 
 ### 기본값
 
