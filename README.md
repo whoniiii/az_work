@@ -31,17 +31,11 @@ git clone https://github.com/whoniiii/az_work ~/.claude/skills/azure-arch-builde
 
 ### 프로젝트 로컬 설치 (특정 프로젝트에만 적용)
 
-`.claude` 폴더는 `/init` 같은 별도 명령 없이 그냥 직접 만들면 됩니다.
-
 ```bash
 # 프로젝트 루트에서
 mkdir -p .claude/skills
 git clone https://github.com/whoniiii/az_work .claude/skills/azure-arch-builder
 ```
-
-> **`.claude` 폴더란?** Claude Code가 자동으로 인식하는 프로젝트 설정 폴더입니다.
-> `/init`은 `CLAUDE.md`(프로젝트 지침 파일)를 만드는 명령이라 스킬 설치와는 별개입니다.
-> 스킬은 `.claude/skills/<스킬명>/SKILL.md` 경로만 맞으면 자동으로 로드됩니다.
 
 ---
 
