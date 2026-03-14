@@ -60,7 +60,7 @@ python ~/.claude/skills/azure-arch-builder/scripts/generate_html_diagram.py \
   --services '<JSON>' \
   --connections '<JSON>' \
   --title "아키텍처 제목" \
-  --output "/경로/architecture-draft.html"
+  --output "archi_diagram.html"
 ```
 
 **services JSON 형식:**
