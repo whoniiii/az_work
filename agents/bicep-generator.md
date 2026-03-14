@@ -27,11 +27,11 @@ Phase 1 완료 시 다음 정보가 확정되어 있어야 한다:
 ├── main.bicepparam         # 파라미터 파일 — 환경별 값, 민감 정보 제외
 └── modules/
     ├── network.bicep           # VNet, Subnet (pe-subnet 포함)
-    ├── ai.bicep                # Azure OpenAI, AI Search, AI Foundry Hub/Project
+    ├── ai.bicep                # Azure OpenAI, AI Search, Microsoft Foundry Hub/Project
     ├── storage.bicep           # ADLS Gen2 (isHnsEnabled: true 필수)
     ├── fabric.bicep            # Microsoft Fabric Capacity (필요 시만)
     ├── keyvault.bicep          # Key Vault
-    ├── monitoring.bicep        # Application Insights, Log Analytics (AI Foundry 사용 시)
+    ├── monitoring.bicep        # Application Insights, Log Analytics (Microsoft Foundry 사용 시)
     └── private-endpoints.bicep # 모든 PE + Private DNS Zone + VNet Link + DNS Zone Group
 ```
 
@@ -44,8 +44,8 @@ Phase 1 완료 시 다음 정보가 확정되어 있어야 한다:
 
 ### `ai.bicep`
 - Azure OpenAI (`kind: 'OpenAI'`) + 모델 배포 (gpt-4o, text-embedding)
-- AI Foundry Hub (`kind: 'Hub'`) — AI Search, Storage, Key Vault, AppInsights 연결
-- AI Foundry Project (`kind: 'Project'`) — Hub를 `hubResourceId`로 참조
+- Microsoft Foundry Hub (`kind: 'Hub'`) — AI Search, Storage, Key Vault, AppInsights 연결
+- Microsoft Foundry Project (`kind: 'Project'`) — Hub를 `hubResourceId`로 참조
 - Azure AI Search — Semantic Ranking, 벡터 검색 설정
 
 ### `storage.bicep`
@@ -60,7 +60,7 @@ Phase 1 완료 시 다음 정보가 확정되어 있어야 한다:
 
 ### `monitoring.bicep`
 - Log Analytics Workspace
-- Application Insights (AI Foundry Hub에 연결)
+- Application Insights (Microsoft Foundry Hub에 연결)
 
 ### `private-endpoints.bicep`
 - 각 서비스마다 3종 세트:
@@ -110,7 +110,7 @@ param adminPassword string  // main.bicepparam에 평문 값 넣지 않음
 
 ### 한국어 주석
 ```bicep
-// AI Foundry Hub — OpenAI, Search, Storage를 통합 관리하는 허브
+// Microsoft Foundry Hub — OpenAI, Search, Storage를 통합 관리하는 허브
 // kind: 'Hub'가 반드시 필요 (없으면 일반 ML Workspace로 생성됨)
 resource aiHub 'Microsoft.MachineLearningServices/workspaces@2024-04-01' = {
   kind: 'Hub'
@@ -209,7 +209,7 @@ param projectPrefix = 'prod'
 | ADLS Gen2 HNS | `isHnsEnabled: false` (생략) | `isHnsEnabled: true` |
 | PE 서브넷 정책 | 미설정 | `privateEndpointNetworkPolicies: 'Disabled'` |
 | DNS Zone Group | PE만 생성 | PE + DNS Zone + VNet Link + DNS Zone Group |
-| AI Foundry 종류 | `kind: 'Default'` | Hub: `kind: 'Hub'`, Project: `kind: 'Project'` |
+| Microsoft Foundry 종류 | `kind: 'Default'` | Hub: `kind: 'Hub'`, Project: `kind: 'Project'` |
 | 공개 네트워크 | 설정 없음 | `publicNetworkAccess: 'Disabled'` |
 | Storage 이름 | `st-my-storage` (하이픈 불가) | `stmystorage` 또는 `st${uniqueString(...)}` |
 | OpenAI 위치 | `koreacentral` | `eastus` 또는 `swedencentral` (가용 지역 확인 필요) |

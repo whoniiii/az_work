@@ -277,7 +277,7 @@ resource peKeyVaultDnsGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGr
 
 ## Managed Network (AI Hub / AML 전용)
 
-AI Foundry Hub와 AML Workspace는 Managed Network라는 별도 격리 기능을 제공한다.
+Microsoft Foundry Hub와 AML Workspace는 Managed Network라는 별도 격리 기능을 제공한다.
 `AllowOnlyApprovedOutbound` 모드로 설정하면, Hub 내부에서 외부로 나가는 트래픽도 승인된 경로만 허용.
 
 ```bicep

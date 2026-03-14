@@ -22,7 +22,7 @@
 ### High (수정 권장)
 - [ ] Storage `allowBlobPublicAccess: false`, `minimumTlsVersion: 'TLS1_2'`
 - [ ] Private DNS Zone VNet Link `registrationEnabled: false` (true면 VM 이름 자동 등록되어 충돌)
-- [ ] AI Foundry Hub `kind: 'Hub'`, Project `kind: 'Project'` — 반대로 하면 배포 실패
+- [ ] Microsoft Foundry Hub `kind: 'Hub'`, Project `kind: 'Project'` — 반대로 하면 배포 실패
 - [ ] OpenAI 모델 배포 `dependsOn` — 여러 모델 배포 시 순서 보장 필요
 
 ### Medium (권장)
