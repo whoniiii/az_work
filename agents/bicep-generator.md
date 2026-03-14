@@ -43,10 +43,12 @@ Phase 1 완료 시 다음 정보가 확정되어 있어야 한다:
 - 추가 서브넷 필요 시 파라미터로 처리
 
 ### `ai.bicep`
-- Azure OpenAI (`kind: 'OpenAI'`) + 모델 배포 (gpt-4o, text-embedding)
-- Microsoft Foundry Hub (`kind: 'Hub'`) — AI Search, Storage, Key Vault, AppInsights 연결
-- Microsoft Foundry Project (`kind: 'Project'`) — Hub를 `hubResourceId`로 참조
-- Azure AI Search — Semantic Ranking, 벡터 검색 설정
+- **Microsoft Foundry resource** (`Microsoft.CognitiveServices/accounts`, `kind: 'AIServices'`) — 최상위 AI 리소스
+  - `allowProjectManagement: true` 필수
+  - 모델 배포 (`Microsoft.CognitiveServices/accounts/deployments`) — Foundry resource 레벨에서 수행
+- **Foundry Project** (`Microsoft.CognitiveServices/accounts/projects`) — Foundry resource의 서브리소스
+- **Azure AI Search** — Semantic Ranking, 벡터 검색 설정
+- ⚠️ Hub 기반(`Microsoft.MachineLearningServices/workspaces`)은 ML/오픈소스 모델 필요 시에만 사용. 일반 AI/RAG 구성은 Microsoft Foundry (AIServices) 사용
 
 ### `storage.bicep`
 - ADLS Gen2: `isHnsEnabled: true` ← **절대 빠트리지 말 것**
@@ -60,7 +62,7 @@ Phase 1 완료 시 다음 정보가 확정되어 있어야 한다:
 
 ### `monitoring.bicep`
 - Log Analytics Workspace
-- Application Insights (Microsoft Foundry Hub에 연결)
+- Application Insights (Hub 기반 구성에서만 필요 — Foundry AIServices는 불필요)
 
 ### `private-endpoints.bicep`
 - 각 서비스마다 3종 세트:
@@ -110,11 +112,14 @@ param adminPassword string  // main.bicepparam에 평문 값 넣지 않음
 
 ### 한국어 주석
 ```bicep
-// Microsoft Foundry Hub — OpenAI, Search, Storage를 통합 관리하는 허브
-// kind: 'Hub'가 반드시 필요 (없으면 일반 ML Workspace로 생성됨)
-resource aiHub 'Microsoft.MachineLearningServices/workspaces@2024-04-01' = {
-  kind: 'Hub'
-  ...
+// Microsoft Foundry resource — kind: 'AIServices' (Azure OpenAI의 superset)
+// allowProjectManagement: true 없으면 Foundry Project 생성 불가
+resource foundry 'Microsoft.CognitiveServices/accounts@2025-06-01' = {
+  kind: 'AIServices'
+  properties: {
+    allowProjectManagement: true
+    ...
+  }
 }
 ```
 
@@ -209,7 +214,9 @@ param projectPrefix = 'prod'
 | ADLS Gen2 HNS | `isHnsEnabled: false` (생략) | `isHnsEnabled: true` |
 | PE 서브넷 정책 | 미설정 | `privateEndpointNetworkPolicies: 'Disabled'` |
 | DNS Zone Group | PE만 생성 | PE + DNS Zone + VNet Link + DNS Zone Group |
-| Microsoft Foundry 종류 | `kind: 'Default'` | Hub: `kind: 'Hub'`, Project: `kind: 'Project'` |
+| Microsoft Foundry resource | `kind: 'OpenAI'` 또는 MachineLearningServices 사용 | `kind: 'AIServices'` + `allowProjectManagement: true` |
+| Foundry Project 미생성 | `allowProjectManagement` 누락 | `allowProjectManagement: true` 필수 |
+| 레거시 Hub 사용 | `Microsoft.MachineLearningServices/workspaces` (일반 AI용) | Microsoft Foundry (AIServices) 사용 — Hub는 ML/오픈소스 모델 전용 |
 | 공개 네트워크 | 설정 없음 | `publicNetworkAccess: 'Disabled'` |
 | Storage 이름 | `st-my-storage` (하이픈 불가) | `stmystorage` 또는 `st${uniqueString(...)}` |
 | OpenAI 위치 | `koreacentral` | `eastus` 또는 `swedencentral` (가용 지역 확인 필요) |

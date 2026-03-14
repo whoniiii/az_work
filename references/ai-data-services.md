@@ -1,9 +1,19 @@
 # Azure AI/Data 서비스 Bicep 스니펫
 
-> **네이밍 기준 (2025년 최신)**
-> - Azure AI Studio → Azure AI Foundry → **Microsoft Foundry** (최신 명칭, 2025년)
-> - Microsoft Foundry Hub/Project: Bicep 리소스 타입은 동일 (`Microsoft.MachineLearningServices/workspaces`)
-> - 표시 명칭: "Microsoft Foundry Hub", "Microsoft Foundry Project"
+> **Microsoft Foundry 최신 아키텍처 (2025년)**
+>
+> **계층 구조**: `Microsoft Foundry resource` → `Foundry Project` → Project assets (에이전트, 파일, 평가)
+>
+> - **Microsoft Foundry resource**: 최상위 Azure 리소스. 모델 배포, 네트워킹, 보안 거버넌스 담당
+>   - Bicep: `Microsoft.CognitiveServices/accounts` + `kind: 'AIServices'`
+> - **Foundry Project**: Foundry resource의 서브리소스. 팀/유스케이스 단위 개발 경계
+>   - Bicep: `Microsoft.CognitiveServices/accounts/projects`
+> - **모델 배포**: Foundry resource 레벨에서 배포 → 프로젝트에서 공유 사용
+>   - Bicep: `Microsoft.CognitiveServices/accounts/deployments`
+> - **Azure OpenAI (`kind: 'OpenAI'`)**: 레거시. Foundry (`kind: 'AIServices'`)의 서브셋
+>   - 동일 리소스 프로바이더(`Microsoft.CognitiveServices`)이므로 업그레이드 가능
+> - **Hub 기반 (`Microsoft.MachineLearningServices/workspaces`)**: 레거시. ML/오픈소스 모델, Serverless API 필요 시에만 사용
+> - **API 버전**: `2025-06-01`
 
 ## 목차
 1. [Azure OpenAI / Microsoft Foundry](#azure-openai--microsoft-foundry)
@@ -19,22 +29,28 @@
 
 ## Azure OpenAI / Microsoft Foundry
 
-```bicep
-// Azure OpenAI Service (Microsoft Foundry 포털 ai.azure.com에서 관리)
-param openAiName string = 'oai-${uniqueString(resourceGroup().id)}'
-param openAiSku string = 'S0'
-param openAiLocation string = 'eastus' // OpenAI는 지역 제한 있음
+### Microsoft Foundry resource (신규 권장)
 
-resource openAi 'Microsoft.CognitiveServices/accounts@2024-10-01' = {
-  name: openAiName
-  location: openAiLocation
-  kind: 'OpenAI'
+```bicep
+// Microsoft Foundry resource — kind: 'AIServices' (Azure OpenAI의 superset)
+// 모델 배포, 프로젝트 관리, AI Search 연결 등 모든 AI 기능의 최상위 리소스
+param foundryName string = 'foundry-${uniqueString(resourceGroup().id)}'
+
+resource foundry 'Microsoft.CognitiveServices/accounts@2025-06-01' = {
+  name: foundryName
+  location: location  // OpenAI 지원 지역: eastus, swedencentral 등
+  kind: 'AIServices'  // 핵심 — OpenAI가 아닌 AIServices (Foundry)
+  identity: {
+    type: 'SystemAssigned'
+  }
   sku: {
-    name: openAiSku
+    name: 'S0'
   }
   properties: {
-    publicNetworkAccess: 'Disabled'  // Private Endpoint 사용 시
-    customSubDomainName: openAiName
+    allowProjectManagement: true  // Foundry Project 생성 활성화 필수
+    customSubDomainName: foundryName
+    disableLocalAuth: false       // EntraID + API Key 모두 허용 (운영 환경은 true 권장)
+    publicNetworkAccess: 'Disabled'
     networkAcls: {
       defaultAction: 'Deny'
       ipRules: []
@@ -43,9 +59,9 @@ resource openAi 'Microsoft.CognitiveServices/accounts@2024-10-01' = {
   }
 }
 
-// GPT-4o 모델 배포
-resource gpt4oDeployment 'Microsoft.CognitiveServices/accounts/deployments@2024-10-01' = {
-  parent: openAi
+// 모델 배포 — Foundry resource 레벨에서 수행, Project에서 공유 사용
+resource gpt4oDeployment 'Microsoft.CognitiveServices/accounts/deployments@2025-06-01' = {
+  parent: foundry
   name: 'gpt-4o'
   sku: {
     name: 'GlobalStandard'
@@ -55,14 +71,13 @@ resource gpt4oDeployment 'Microsoft.CognitiveServices/accounts/deployments@2024-
     model: {
       format: 'OpenAI'
       name: 'gpt-4o'
-      version: '2024-08-06'
+      version: '2024-11-20'
     }
   }
 }
 
-// text-embedding-3-large 배포
-resource embeddingDeployment 'Microsoft.CognitiveServices/accounts/deployments@2024-10-01' = {
-  parent: openAi
+resource embeddingDeployment 'Microsoft.CognitiveServices/accounts/deployments@2025-06-01' = {
+  parent: foundry
   name: 'text-embedding-3-large'
   sku: {
     name: 'Standard'
@@ -77,68 +92,79 @@ resource embeddingDeployment 'Microsoft.CognitiveServices/accounts/deployments@2
   }
   dependsOn: [gpt4oDeployment]
 }
+
+// Foundry Project — Foundry resource의 서브리소스, 팀/유스케이스 단위
+param foundryProjectName string = 'proj-${uniqueString(resourceGroup().id)}'
+
+resource foundryProject 'Microsoft.CognitiveServices/accounts/projects@2025-06-01' = {
+  parent: foundry
+  name: foundryProjectName
+  location: location
+  identity: {
+    type: 'SystemAssigned'
+  }
+  properties: {}
+}
 ```
 
-### Microsoft Foundry Hub
+### Azure OpenAI Service (레거시 — 신규 개발 시 Microsoft Foundry 사용 권장)
 
 ```bicep
-// Microsoft Foundry Hub (구: Azure AI Studio Hub → Azure AI Foundry Hub → Microsoft Foundry Hub)
-// Bicep 리소스 타입은 MachineLearningServices/workspaces, kind: 'Hub'
+// Azure OpenAI Service — kind: 'OpenAI' (Foundry의 서브셋, 레거시)
+// 기존 호환성 유지 목적 또는 OpenAI 전용 엔드포인트가 명시적으로 필요한 경우
+param openAiName string = 'oai-${uniqueString(resourceGroup().id)}'
+
+resource openAi 'Microsoft.CognitiveServices/accounts@2025-06-01' = {
+  name: openAiName
+  location: location  // eastus, swedencentral 등 OpenAI 지원 지역
+  kind: 'OpenAI'
+  sku: { name: 'S0' }
+  properties: {
+    customSubDomainName: openAiName
+    publicNetworkAccess: 'Disabled'
+    networkAcls: {
+      defaultAction: 'Deny'
+      ipRules: []
+      virtualNetworkRules: []
+    }
+  }
+}
+```
+
+### Hub 기반 구성 (레거시 — ML/오픈소스 모델, Serverless API, Managed compute 필요 시에만)
+
+```bicep
+// Azure AI Hub — MachineLearningServices, kind: 'Hub'
+// ⚠️ 신규 개발에는 Microsoft Foundry (AIServices) 사용 권장
+// Hub 기반은 HuggingFace, NVIDIA NIM, Managed compute, Prompt flow 등 ML 기능 필요 시 사용
 param aiHubName string = 'aih-${uniqueString(resourceGroup().id)}'
 
 resource aiHub 'Microsoft.MachineLearningServices/workspaces@2024-10-01' = {
   name: aiHubName
   location: location
   kind: 'Hub'
-  identity: {
-    type: 'SystemAssigned'
-  }
+  identity: { type: 'SystemAssigned' }
   properties: {
     friendlyName: aiHubName
     storageAccount: storageAccount.id
     keyVault: keyVault.id
-    applicationInsights: appInsights.id  // 선택사항
+    applicationInsights: appInsights.id
     publicNetworkAccess: 'Disabled'
     managedNetwork: {
       isolationMode: 'AllowOnlyApprovedOutbound'
-      outboundRules: {}
     }
   }
 }
 
-// Microsoft Foundry Project
-param aiProjectName string = 'aip-${uniqueString(resourceGroup().id)}'
-
+// Hub-based Project (레거시)
 resource aiProject 'Microsoft.MachineLearningServices/workspaces@2024-10-01' = {
-  name: aiProjectName
+  name: 'proj-${uniqueString(resourceGroup().id)}'
   location: location
   kind: 'Project'
-  identity: {
-    type: 'SystemAssigned'
-  }
+  identity: { type: 'SystemAssigned' }
   properties: {
-    friendlyName: aiProjectName
     hubResourceId: aiHub.id
     publicNetworkAccess: 'Disabled'
-  }
-}
-
-// AI Services Connection (OpenAI → Microsoft Foundry Hub 연결)
-resource aiServicesConnection 'Microsoft.MachineLearningServices/workspaces/connections@2024-10-01' = {
-  parent: aiHub
-  name: 'aoai-connection'
-  properties: {
-    category: 'AzureOpenAI'
-    target: openAi.properties.endpoint
-    authType: 'ApiKey'
-    isSharedToAll: true
-    credentials: {
-      key: openAi.listKeys().key1
-    }
-    metadata: {
-      ApiType: 'Azure'
-      ResourceId: openAi.id
-    }
   }
 }
 ```
