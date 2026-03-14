@@ -22,47 +22,37 @@
 
 ## 설치
 
-### Cowork에서 사용
+### 전역 설치 (모든 프로젝트에서 사용)
 
 ```bash
-# 1. 이 저장소 클론
-git clone https://github.com/<your-org>/azure-arch-builder
-
-# 2. 스킬 폴더에 복사
-cp -r azure-arch-builder ~/.claude/skills/
-# 또는 프로젝트별로
-cp -r azure-arch-builder .claude/skills/
-```
-
-또는 `.skill` 패키지 파일로 설치:
-```bash
-# skill 파일 빌드 (Cowork에서)
-cd azure-arch-builder
-python -m scripts.package_skill . ../
-
-# 생성된 azure-arch-builder.skill 파일을 Cowork에서 "Copy to your skills"로 설치
-```
-
-### Claude Code CLI에서 사용
-
-```bash
-# 개인 전역 설치
 mkdir -p ~/.claude/skills
-git clone https://github.com/<your-org>/azure-arch-builder ~/.claude/skills/azure-arch-builder
-
-# 또는 프로젝트 로컬 설치
-mkdir -p .claude/skills
-git clone https://github.com/<your-org>/azure-arch-builder .claude/skills/azure-arch-builder
+git clone https://github.com/whoniiii/az_work ~/.claude/skills/azure-arch-builder
 ```
+
+### 프로젝트 로컬 설치 (특정 프로젝트에만 적용)
+
+`.claude` 폴더는 `/init` 같은 별도 명령 없이 그냥 직접 만들면 됩니다.
+
+```bash
+# 프로젝트 루트에서
+mkdir -p .claude/skills
+git clone https://github.com/whoniiii/az_work .claude/skills/azure-arch-builder
+```
+
+> **`.claude` 폴더란?** Claude Code가 자동으로 인식하는 프로젝트 설정 폴더입니다.
+> `/init`은 `CLAUDE.md`(프로젝트 지침 파일)를 만드는 명령이라 스킬 설치와는 별개입니다.
+> 스킬은 `.claude/skills/<스킬명>/SKILL.md` 경로만 맞으면 자동으로 로드됩니다.
 
 ---
 
 ## 업데이트
 
 ```bash
-# 스킬이 설치된 위치에서
-cd ~/.claude/skills/azure-arch-builder
-git pull
+# 전역 설치한 경우
+cd ~/.claude/skills/azure-arch-builder && git pull
+
+# 프로젝트 로컬 설치한 경우
+cd .claude/skills/azure-arch-builder && git pull
 ```
 
 ---
@@ -80,6 +70,7 @@ azure-arch-builder/
 │   ├── generate_html_diagram.py      # 인터랙티브 HTML 아키텍처 다이어그램 생성
 │   └── generate_diagram.py           # PNG 다이어그램 생성 (diagrams 라이브러리)
 └── agents/
+    ├── bicep-generator.md            # Bicep 생성 에이전트 지침
     └── bicep-reviewer.md             # Bicep 코드 리뷰 에이전트 지침
 ```
 
