@@ -1,61 +1,37 @@
 # azure-arch-builder
 
-> Azure AI/Data 인프라를 자연어로 설계하고 자동 배포까지 이어주는 Claude 스킬
+> Azure AI/Data 인프라를 자연어로 설계하고 자동 배포까지 이어주는 Claude Code 스킬
 
-## 어떻게 동작하나요?
-
-```
-"AI Search랑 Foundry 만들고 싶어"
-        ↓
-[1] 아키텍처 초안 제안 + 인터랙티브 HTML 다이어그램
-        ↓ (대화로 확정)
-[2] Bicep IaC 자동 생성 (main.bicep + modules/)
-        ↓
-[3] 코드 자동 리뷰 (보안/완전성/모범사례)
-        ↓ (사용자 확인)
-[4] Azure 실제 배포 (az deployment, 단계별 보고)
-```
-
-**특화 영역**: Azure OpenAI, AI Foundry Hub/Project, AI Search, Microsoft Fabric, ADLS Gen2, AML, Key Vault + Private Endpoint 전체 구성
+"AI Search랑 Foundry 만들고 싶어" 라고 말하면, 대화를 통해 아키텍처를 확정하고 Bicep 코드 생성부터 실제 Azure 배포까지 자동으로 진행합니다.
 
 ---
 
 ## 설치
-
-### 전역 설치 (모든 프로젝트에서 사용)
 
 ```bash
 mkdir -p ~/.claude/skills
 git clone https://github.com/whoniiii/az_work ~/.claude/skills/azure-arch-builder
 ```
 
-### 프로젝트 로컬 설치 (특정 프로젝트에만 적용)
-
-```bash
-# 프로젝트 루트에서
-mkdir -p .claude/skills
-git clone https://github.com/whoniiii/az_work .claude/skills/azure-arch-builder
-```
-
-
 ---
 
-## 파일 구조
+## 사용법
+
+Claude Code에서 원하는 Azure 인프라를 자연어로 요청하면 됩니다.
 
 ```
-azure-arch-builder/
-├── SKILL.md                          # 메인 스킬 지침 (4단계 워크플로우)
-├── references/
-│   ├── ai-data-services.md           # Azure AI/Data 서비스 Bicep 스니펫
-│   ├── private-endpoints.md          # Private Endpoint 패턴 & DNS Zone 매핑
-│   └── diagram-guide.md              # 다이어그램 생성 가이드
-├── scripts/
-│   ├── generate_html_diagram.py      # 인터랙티브 HTML 아키텍처 다이어그램 생성
-│   └── generate_diagram.py           # PNG 다이어그램 생성 (diagrams 라이브러리)
-└── agents/
-    ├── bicep-generator.md            # Bicep 생성 에이전트 지침
-    └── bicep-reviewer.md             # Bicep 코드 리뷰 에이전트 지침
+"AI Search랑 Foundry Hub 만들어줘, private endpoint 포함해서"
+"RAG 챗봇 아키텍처 구성해줘"
+"Azure에 데이터 레이크하우스 올려줘"
 ```
+
+이후 Claude가 단계별로 안내합니다:
+
+1. **아키텍처 제안** — 서비스 구성 초안 + 인터랙티브 다이어그램 제시
+2. **대화로 확정** — 서비스, SKU, 네트워킹 방식 조정
+3. **Bicep 생성** — 배포 가능한 IaC 코드 자동 작성
+4. **코드 리뷰** — 보안/완전성/모범사례 자동 검토 및 수정
+5. **Azure 배포** — what-if 확인 후 실제 배포
 
 ---
 
@@ -72,11 +48,12 @@ azure-arch-builder/
 
 ---
 
-## 기여
+## 사전 요구사항
 
-1. `fork` → `feature/xxx` 브랜치에서 수정
-2. SKILL.md 또는 references/ 파일 업데이트
-3. Pull Request 생성
+- [Claude Code CLI](https://claude.ai/code) 설치
+- Azure CLI (`az`) 설치 및 로그인 (`az login`)
+
+---
 
 ## 라이선스
 
