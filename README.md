@@ -27,7 +27,7 @@ claude
 Azure 인프라 관련 요청을 하면 스킬이 자동으로 발동됩니다. 별도 명령어 없이 자연어로 말하면 됩니다.
 
 ```
-"AI Search랑 Foundry Hub 만들어줘, private endpoint 포함해서"
+"AI Search랑 Microsoft Foundry Hub 만들어줘, private endpoint 포함해서"
 "RAG 챗봇 아키텍처 구성해줘"
 "Azure에 데이터 레이크하우스 올려줘"
 ```
@@ -47,7 +47,7 @@ Azure 인프라 관련 요청을 하면 스킬이 자동으로 발동됩니다. 
 | 시나리오 | 서비스 조합 |
 |---------|-----------|
 | RAG 챗봇 | Azure OpenAI + AI Search + ADLS Gen2 + Key Vault |
-| AI Foundry Hub | AI Hub + AI Project + OpenAI + Search + Storage |
+| Microsoft Foundry | Microsoft Foundry Hub + Microsoft Foundry Project + Azure OpenAI Service + Azure AI Search + Azure Data Lake Storage Gen2 |
 | Data Lakehouse | Microsoft Fabric + ADLS Gen2 + ADF |
 | ML Platform | Azure ML + ADLS Gen2 + Key Vault + ACR |
 

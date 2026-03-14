@@ -9,7 +9,7 @@ description: >
   - "Azure에 X 만들어줘", "AI Search랑 Foundry 만들고 싶어", "RAG 아키텍처 구성해줘"
   - Azure 리소스 배포, Bicep 템플릿 생성, IaC 코드 생성
   - "프라이빗 엔드포인트 설정", "VNet 통합", "Azure 인프라 설계"
-  - AI Foundry, AI Search, OpenAI, Fabric, ADLS Gen2, AML 등 Azure AI/Data 서비스 조합
+  - Microsoft Foundry, AI Search, OpenAI, Fabric, ADLS Gen2, AML 등 Azure AI/Data 서비스 조합
   - "Azure에 실제로 만들어줘", "az cli로 배포해줘", "리소스 그룹에 올려줘"
 ---
 
@@ -72,9 +72,9 @@ python "$DIAGRAM_SCRIPT" \
 [
   {"id": "openai", "name": "Azure OpenAI Service", "type": "openai", "sku": "S0", "private": true,
    "details": ["gpt-4o (30K TPM)", "text-embedding-3-large (120K TPM)"]},
-  {"id": "ai_foundry_hub", "name": "Azure AI Foundry Hub", "type": "ai_hub", "sku": "Standard", "private": true,
+  {"id": "ai_foundry_hub", "name": "Microsoft Foundry Hub", "type": "ai_hub", "sku": "Standard", "private": true,
    "details": ["OpenAI 연결", "AI Search 연결"]},
-  {"id": "ai_foundry_project", "name": "Azure AI Foundry Project", "type": "ai_hub", "sku": "Standard", "private": true,
+  {"id": "ai_foundry_project", "name": "Microsoft Foundry Project", "type": "ai_hub", "sku": "Standard", "private": true,
    "details": ["Hub 하위 프로젝트"]},
   {"id": "search", "name": "Azure AI Search", "type": "search", "sku": "Standard", "private": true,
    "details": ["Semantic Ranking 활성화", "벡터 검색 지원"]},
@@ -86,8 +86,8 @@ python "$DIAGRAM_SCRIPT" \
 ```
 
 > **서비스 명칭 규칙**: 반드시 최신 공식 Azure 서비스 명칭을 사용한다.
-> - Azure AI Studio → **Azure AI Foundry** (2024년 11월 리브랜딩)
-> - AI Foundry Hub → **Azure AI Foundry Hub**
+> - Azure AI Studio → **Microsoft Foundry** (2024년 11월 리브랜딩)
+> - Microsoft Foundry Hub → **Microsoft Foundry Hub**
 > - AI Search → **Azure AI Search**
 > - ADLS Gen2 → **Azure Data Lake Storage Gen2**
 > - Azure OpenAI → **Azure OpenAI Service**
@@ -182,7 +182,7 @@ az account list --output table
 ├── main.bicepparam         # 파라미터 (환경별 값)
 └── modules/
     ├── network.bicep       # VNet, Subnet (private endpoint subnet 포함)
-    ├── ai.bicep            # OpenAI, AI Search, AI Foundry
+    ├── ai.bicep            # OpenAI, AI Search, Microsoft Foundry
     ├── storage.bicep       # ADLS Gen2 (isHnsEnabled: true)
     ├── fabric.bicep        # Microsoft Fabric (필요 시)
     ├── keyvault.bicep      # Key Vault
@@ -219,7 +219,7 @@ az account list --output table
 - [ ] ADLS Gen2 `isHnsEnabled: true` 설정됨
 - [ ] Private Endpoint마다 DNS Zone Group 생성됨
 - [ ] pe-subnet `privateEndpointNetworkPolicies: 'Disabled'` 설정됨
-- [ ] AI Foundry Hub: `kind: 'Hub'`, Project: `kind: 'Project'` 올바름
+- [ ] Microsoft Foundry Hub: `kind: 'Hub'`, Project: `kind: 'Project'` 올바름
 - [ ] OpenAI 모델 배포 apiVersion이 최신 stable 버전
 
 **모범사례 (Medium)**
@@ -334,7 +334,7 @@ az group delete --name <RG_NAME> --yes --no-wait
 | 시나리오 | 서비스 조합 | Private Endpoint |
 |---------|-----------|-----------------|
 | RAG 챗봇 | Azure OpenAI Service + Azure AI Search + Azure Data Lake Storage Gen2 + Azure Key Vault | account, searchService, dfs/blob, vault |
-| Azure AI Foundry | Azure AI Foundry Hub + Azure AI Foundry Project + Azure OpenAI Service + Azure AI Search + Azure Data Lake Storage Gen2 + Azure Key Vault + Application Insights | amlworkspace, account, searchService, dfs, vault |
+| Microsoft Foundry | Microsoft Foundry Hub + Microsoft Foundry Project + Azure OpenAI Service + Azure AI Search + Azure Data Lake Storage Gen2 + Azure Key Vault + Application Insights | amlworkspace, account, searchService, dfs, vault |
 | Data Lakehouse | Microsoft Fabric + Azure Data Lake Storage Gen2 + Azure Data Factory + (Azure AI Search) | dfs, blob |
 | ML Platform | Azure Machine Learning + Azure Data Lake Storage Gen2 + Azure Key Vault + Azure Container Registry | amlworkspace, dfs, vault, registry |
 

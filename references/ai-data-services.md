@@ -1,12 +1,12 @@
 # Azure AI/Data 서비스 Bicep 스니펫
 
 > **네이밍 기준 (2025년 최신)**
-> - Azure AI Studio → **Azure AI Foundry** (2024년 11월 리브랜딩)
-> - Azure AI Foundry Hub/Project: Bicep 리소스 타입은 동일 (`Microsoft.MachineLearningServices/workspaces`)
-> - 표시 명칭: "Azure AI Foundry Hub", "Azure AI Foundry Project"
+> - Azure AI Studio → Azure AI Foundry → **Microsoft Foundry** (최신 명칭, 2025년)
+> - Microsoft Foundry Hub/Project: Bicep 리소스 타입은 동일 (`Microsoft.MachineLearningServices/workspaces`)
+> - 표시 명칭: "Microsoft Foundry Hub", "Microsoft Foundry Project"
 
 ## 목차
-1. [Azure OpenAI / Azure AI Foundry](#azure-openai--azure-ai-foundry)
+1. [Azure OpenAI / Microsoft Foundry](#azure-openai--microsoft-foundry)
 2. [Azure AI Search](#azure-ai-search)
 3. [Microsoft Fabric](#microsoft-fabric)
 4. [ADLS Gen2 / Storage Account](#adls-gen2--storage-account)
@@ -17,10 +17,10 @@
 
 ---
 
-## Azure OpenAI / Azure AI Foundry
+## Azure OpenAI / Microsoft Foundry
 
 ```bicep
-// Azure OpenAI Service (Azure AI Foundry 포털에서 관리)
+// Azure OpenAI Service (Microsoft Foundry 포털 ai.azure.com에서 관리)
 param openAiName string = 'oai-${uniqueString(resourceGroup().id)}'
 param openAiSku string = 'S0'
 param openAiLocation string = 'eastus' // OpenAI는 지역 제한 있음
@@ -79,10 +79,10 @@ resource embeddingDeployment 'Microsoft.CognitiveServices/accounts/deployments@2
 }
 ```
 
-### Azure AI Foundry Hub
+### Microsoft Foundry Hub
 
 ```bicep
-// Azure AI Foundry Hub (구: Azure AI Studio Hub)
+// Microsoft Foundry Hub (구: Azure AI Studio Hub → Azure AI Foundry Hub → Microsoft Foundry Hub)
 // Bicep 리소스 타입은 MachineLearningServices/workspaces, kind: 'Hub'
 param aiHubName string = 'aih-${uniqueString(resourceGroup().id)}'
 
@@ -106,7 +106,7 @@ resource aiHub 'Microsoft.MachineLearningServices/workspaces@2024-10-01' = {
   }
 }
 
-// Azure AI Foundry Project
+// Microsoft Foundry Project
 param aiProjectName string = 'aip-${uniqueString(resourceGroup().id)}'
 
 resource aiProject 'Microsoft.MachineLearningServices/workspaces@2024-10-01' = {
@@ -123,7 +123,7 @@ resource aiProject 'Microsoft.MachineLearningServices/workspaces@2024-10-01' = {
   }
 }
 
-// AI Services Connection (OpenAI → Azure AI Foundry Hub 연결)
+// AI Services Connection (OpenAI → Microsoft Foundry Hub 연결)
 resource aiServicesConnection 'Microsoft.MachineLearningServices/workspaces/connections@2024-10-01' = {
   parent: aiHub
   name: 'aoai-connection'
