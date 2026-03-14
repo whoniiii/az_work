@@ -67,19 +67,30 @@ python "$DIAGRAM_SCRIPT" \
   --output "archi_diagram.html"
 ```
 
-**services JSON 형식:**
+**services JSON 형식 (최신 Azure 서비스 명칭 사용):**
 ```json
 [
-  {"id": "openai", "name": "Azure OpenAI", "type": "openai", "sku": "S0", "private": true,
+  {"id": "openai", "name": "Azure OpenAI Service", "type": "openai", "sku": "S0", "private": true,
    "details": ["gpt-4o (30K TPM)", "text-embedding-3-large (120K TPM)"]},
-  {"id": "search", "name": "AI Search", "type": "search", "sku": "Standard", "private": true,
+  {"id": "ai_foundry_hub", "name": "Azure AI Foundry Hub", "type": "ai_hub", "sku": "Standard", "private": true,
+   "details": ["OpenAI 연결", "AI Search 연결"]},
+  {"id": "ai_foundry_project", "name": "Azure AI Foundry Project", "type": "ai_hub", "sku": "Standard", "private": true,
+   "details": ["Hub 하위 프로젝트"]},
+  {"id": "search", "name": "Azure AI Search", "type": "search", "sku": "Standard", "private": true,
    "details": ["Semantic Ranking 활성화", "벡터 검색 지원"]},
-  {"id": "storage", "name": "ADLS Gen2", "type": "storage", "sku": "Standard ZRS", "private": true,
+  {"id": "storage", "name": "Azure Data Lake Storage Gen2", "type": "storage", "sku": "Standard ZRS", "private": true,
    "details": ["Hierarchical Namespace", "raw/processed/curated 컨테이너"]},
-  {"id": "kv", "name": "Key Vault", "type": "keyvault", "sku": "Standard", "private": true,
+  {"id": "kv", "name": "Azure Key Vault", "type": "keyvault", "sku": "Standard", "private": true,
    "details": ["RBAC 방식", "Soft Delete 90일"]}
 ]
 ```
+
+> **서비스 명칭 규칙**: 반드시 최신 공식 Azure 서비스 명칭을 사용한다.
+> - Azure AI Studio → **Azure AI Foundry** (2024년 11월 리브랜딩)
+> - AI Foundry Hub → **Azure AI Foundry Hub**
+> - AI Search → **Azure AI Search**
+> - ADLS Gen2 → **Azure Data Lake Storage Gen2**
+> - Azure OpenAI → **Azure OpenAI Service**
 
 **connections JSON 형식:**
 ```json
@@ -322,10 +333,10 @@ az group delete --name <RG_NAME> --yes --no-wait
 
 | 시나리오 | 서비스 조합 | Private Endpoint |
 |---------|-----------|-----------------|
-| RAG 챗봇 | OpenAI + AI Search + ADLS + KV | account, searchService, dfs/blob, vault |
-| AI Foundry Hub | AI Hub + AI Project + OpenAI + Search + Storage + KV + AppInsights | amlworkspace, account, searchService, dfs, vault |
-| Data Lakehouse | Fabric + ADLS + ADF + (AI Search) | dfs, blob |
-| ML Platform | AML + ADLS + KV + ACR | amlworkspace, dfs, vault, registry |
+| RAG 챗봇 | Azure OpenAI Service + Azure AI Search + Azure Data Lake Storage Gen2 + Azure Key Vault | account, searchService, dfs/blob, vault |
+| Azure AI Foundry | Azure AI Foundry Hub + Azure AI Foundry Project + Azure OpenAI Service + Azure AI Search + Azure Data Lake Storage Gen2 + Azure Key Vault + Application Insights | amlworkspace, account, searchService, dfs, vault |
+| Data Lakehouse | Microsoft Fabric + Azure Data Lake Storage Gen2 + Azure Data Factory + (Azure AI Search) | dfs, blob |
+| ML Platform | Azure Machine Learning + Azure Data Lake Storage Gen2 + Azure Key Vault + Azure Container Registry | amlworkspace, dfs, vault, registry |
 
 ### 기본값
 
