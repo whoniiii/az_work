@@ -1,7 +1,12 @@
 # Azure AI/Data 서비스 Bicep 스니펫
 
+> **네이밍 기준 (2025년 최신)**
+> - Azure AI Studio → **Azure AI Foundry** (2024년 11월 리브랜딩)
+> - Azure AI Foundry Hub/Project: Bicep 리소스 타입은 동일 (`Microsoft.MachineLearningServices/workspaces`)
+> - 표시 명칭: "Azure AI Foundry Hub", "Azure AI Foundry Project"
+
 ## 목차
-1. [Azure OpenAI / AI Foundry](#azure-openai--ai-foundry)
+1. [Azure OpenAI / Azure AI Foundry](#azure-openai--azure-ai-foundry)
 2. [Azure AI Search](#azure-ai-search)
 3. [Microsoft Fabric](#microsoft-fabric)
 4. [ADLS Gen2 / Storage Account](#adls-gen2--storage-account)
@@ -12,15 +17,15 @@
 
 ---
 
-## Azure OpenAI / AI Foundry
+## Azure OpenAI / Azure AI Foundry
 
 ```bicep
-// Azure OpenAI Service
+// Azure OpenAI Service (Azure AI Foundry 포털에서 관리)
 param openAiName string = 'oai-${uniqueString(resourceGroup().id)}'
 param openAiSku string = 'S0'
 param openAiLocation string = 'eastus' // OpenAI는 지역 제한 있음
 
-resource openAi 'Microsoft.CognitiveServices/accounts@2023-10-01-preview' = {
+resource openAi 'Microsoft.CognitiveServices/accounts@2024-10-01' = {
   name: openAiName
   location: openAiLocation
   kind: 'OpenAI'
@@ -39,7 +44,7 @@ resource openAi 'Microsoft.CognitiveServices/accounts@2023-10-01-preview' = {
 }
 
 // GPT-4o 모델 배포
-resource gpt4oDeployment 'Microsoft.CognitiveServices/accounts/deployments@2023-10-01-preview' = {
+resource gpt4oDeployment 'Microsoft.CognitiveServices/accounts/deployments@2024-10-01' = {
   parent: openAi
   name: 'gpt-4o'
   sku: {
@@ -56,7 +61,7 @@ resource gpt4oDeployment 'Microsoft.CognitiveServices/accounts/deployments@2023-
 }
 
 // text-embedding-3-large 배포
-resource embeddingDeployment 'Microsoft.CognitiveServices/accounts/deployments@2023-10-01-preview' = {
+resource embeddingDeployment 'Microsoft.CognitiveServices/accounts/deployments@2024-10-01' = {
   parent: openAi
   name: 'text-embedding-3-large'
   sku: {
@@ -74,13 +79,14 @@ resource embeddingDeployment 'Microsoft.CognitiveServices/accounts/deployments@2
 }
 ```
 
-### AI Foundry Hub (Azure AI Studio Hub)
+### Azure AI Foundry Hub
 
 ```bicep
-// AI Foundry Hub = Azure ML Workspace with kind: 'Hub'
+// Azure AI Foundry Hub (구: Azure AI Studio Hub)
+// Bicep 리소스 타입은 MachineLearningServices/workspaces, kind: 'Hub'
 param aiHubName string = 'aih-${uniqueString(resourceGroup().id)}'
 
-resource aiHub 'Microsoft.MachineLearningServices/workspaces@2024-04-01' = {
+resource aiHub 'Microsoft.MachineLearningServices/workspaces@2024-10-01' = {
   name: aiHubName
   location: location
   kind: 'Hub'
@@ -100,10 +106,10 @@ resource aiHub 'Microsoft.MachineLearningServices/workspaces@2024-04-01' = {
   }
 }
 
-// AI Foundry Project
+// Azure AI Foundry Project
 param aiProjectName string = 'aip-${uniqueString(resourceGroup().id)}'
 
-resource aiProject 'Microsoft.MachineLearningServices/workspaces@2024-04-01' = {
+resource aiProject 'Microsoft.MachineLearningServices/workspaces@2024-10-01' = {
   name: aiProjectName
   location: location
   kind: 'Project'
@@ -117,8 +123,8 @@ resource aiProject 'Microsoft.MachineLearningServices/workspaces@2024-04-01' = {
   }
 }
 
-// AI Services Connection (OpenAI → AI Hub 연결)
-resource aiServicesConnection 'Microsoft.MachineLearningServices/workspaces/connections@2024-04-01' = {
+// AI Services Connection (OpenAI → Azure AI Foundry Hub 연결)
+resource aiServicesConnection 'Microsoft.MachineLearningServices/workspaces/connections@2024-10-01' = {
   parent: aiHub
   name: 'aoai-connection'
   properties: {
@@ -274,7 +280,7 @@ resource curatedContainer 'Microsoft.Storage/storageAccounts/blobServices/contai
 ```bicep
 param amlWorkspaceName string = 'mlw-${uniqueString(resourceGroup().id)}'
 
-resource amlWorkspace 'Microsoft.MachineLearningServices/workspaces@2024-04-01' = {
+resource amlWorkspace 'Microsoft.MachineLearningServices/workspaces@2024-10-01' = {
   name: amlWorkspaceName
   location: location
   kind: 'Default'  // 일반 AML Workspace (Hub/Project와 구분)
