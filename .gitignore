@@ -1,0 +1,24 @@
+# 임시 파일
+*.pyc
+__pycache__/
+*.egg-info/
+.DS_Store
+Thumbs.db
+
+# 테스트/eval 결과물 (저장소에 포함 안 함)
+evals/outputs/
+workspace/
+
+# 생성된 산출물 (저장소에 포함 안 함)
+output/
+*.png
+*.svg
+!assets/*.png
+!assets/*.svg
+
+# 환경 설정
+.env
+*.local
+
+# 패키지 파일 (빌드 결과물)
+*.skill
