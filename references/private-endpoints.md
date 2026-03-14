@@ -1,5 +1,10 @@
 # Azure Private Endpoint 패턴
 
+> **API 버전 주의**: 이 파일의 Bicep 스니펫에서 `@<fetch로 확인>` 표시된 자리는 하드코딩된 버전을 쓰지 않는다.
+> Bicep 생성 전 반드시 MS Docs를 fetch하여 최신 stable apiVersion을 확인할 것.
+> - Private Endpoints: https://learn.microsoft.com/en-us/azure/templates/microsoft.network/privateendpoints
+> - Private DNS Zones: https://learn.microsoft.com/en-us/azure/templates/microsoft.network/privatednszones
+
 ## Private Endpoint란?
 
 VNet의 프라이빗 IP 주소를 Azure PaaS 서비스에 할당하여, 인터넷을 거치지 않고 내부 네트워크로만 접근하게 하는 기능.
@@ -12,8 +17,9 @@ VNet의 프라이빗 IP 주소를 Azure PaaS 서비스에 할당하여, 인터�
 // Private Endpoint 생성 (공통 패턴)
 // ======================================
 // 각 서비스마다 groupId가 다름 (아래 표 참조)
+// apiVersion은 MS Docs fetch 후 확인
 
-resource privateEndpoint 'Microsoft.Network/privateEndpoints@2023-09-01' = {
+resource privateEndpoint 'Microsoft.Network/privateEndpoints@<fetch로 확인>' = {
   name: 'pe-${targetResourceName}'
   location: location
   properties: {
@@ -33,7 +39,7 @@ resource privateEndpoint 'Microsoft.Network/privateEndpoints@2023-09-01' = {
 }
 
 // Private DNS Zone Group (PE와 DNS Zone 연결)
-resource privateDnsZoneGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2023-09-01' = {
+resource privateDnsZoneGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@<fetch로 확인>' = {
   parent: privateEndpoint
   name: 'dnszg-${targetResourceName}'
   properties: {
@@ -72,13 +78,14 @@ resource privateDnsZoneGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneG
 
 ```bicep
 // Private DNS Zone 생성
-resource privateDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' = {
+// apiVersion은 MS Docs fetch 후 확인
+resource privateDnsZone 'Microsoft.Network/privateDnsZones@<fetch로 확인>' = {
   name: 'privatelink.cognitiveservices.azure.com'  // 서비스별로 다름
   location: 'global'  // DNS Zone은 항상 global
 }
 
 // VNet과 DNS Zone 연결 (DNS 쿼리가 이 Zone으로 라우팅되도록)
-resource dnsZoneVnetLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2020-06-01' = {
+resource dnsZoneVnetLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@<fetch로 확인>' = {
   parent: privateDnsZone
   name: 'link-${vnetName}'
   location: 'global'
@@ -93,8 +100,13 @@ resource dnsZoneVnetLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@
 
 ## 전체 Private Endpoint 모듈 예시 (OpenAI)
 
+> `@<fetch로 확인>` 자리는 Bicep 생성 전 MS Docs fetch로 최신 stable apiVersion을 확인 후 채운다.
+
 ```bicep
 // modules/private-endpoints.bicep
+// apiVersion은 아래 MS Docs fetch 후 확인:
+// - Private Endpoints: https://learn.microsoft.com/en-us/azure/templates/microsoft.network/privateendpoints
+// - Private DNS Zones: https://learn.microsoft.com/en-us/azure/templates/microsoft.network/privatednszones
 
 param location string
 param vnetId string
@@ -107,7 +119,7 @@ param storageAccountId string
 param keyVaultId string
 
 // ---- OpenAI Private Endpoint ----
-resource peOpenAi 'Microsoft.Network/privateEndpoints@2023-09-01' = {
+resource peOpenAi 'Microsoft.Network/privateEndpoints@<fetch로 확인>' = {
   name: 'pe-openai'
   location: location
   properties: {
@@ -122,12 +134,12 @@ resource peOpenAi 'Microsoft.Network/privateEndpoints@2023-09-01' = {
   }
 }
 
-resource dnsZoneOpenAi 'Microsoft.Network/privateDnsZones@2020-06-01' = {
+resource dnsZoneOpenAi 'Microsoft.Network/privateDnsZones@<fetch로 확인>' = {
   name: 'privatelink.cognitiveservices.azure.com'
   location: 'global'
 }
 
-resource dnsZoneOpenAiVnetLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2020-06-01' = {
+resource dnsZoneOpenAiVnetLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@<fetch로 확인>' = {
   parent: dnsZoneOpenAi
   name: 'link-openai'
   location: 'global'
@@ -137,7 +149,7 @@ resource dnsZoneOpenAiVnetLink 'Microsoft.Network/privateDnsZones/virtualNetwork
   }
 }
 
-resource peOpenAiDnsGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2023-09-01' = {
+resource peOpenAiDnsGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@<fetch로 확인>' = {
   parent: peOpenAi
   name: 'dnszg-openai'
   properties: {
@@ -149,7 +161,7 @@ resource peOpenAiDnsGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGrou
 }
 
 // ---- AI Search Private Endpoint ----
-resource peSearch 'Microsoft.Network/privateEndpoints@2023-09-01' = {
+resource peSearch 'Microsoft.Network/privateEndpoints@<fetch로 확인>' = {
   name: 'pe-search'
   location: location
   properties: {
@@ -164,12 +176,12 @@ resource peSearch 'Microsoft.Network/privateEndpoints@2023-09-01' = {
   }
 }
 
-resource dnsZoneSearch 'Microsoft.Network/privateDnsZones@2020-06-01' = {
+resource dnsZoneSearch 'Microsoft.Network/privateDnsZones@<fetch로 확인>' = {
   name: 'privatelink.search.windows.net'
   location: 'global'
 }
 
-resource dnsZoneSearchVnetLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2020-06-01' = {
+resource dnsZoneSearchVnetLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@<fetch로 확인>' = {
   parent: dnsZoneSearch
   name: 'link-search'
   location: 'global'
@@ -179,7 +191,7 @@ resource dnsZoneSearchVnetLink 'Microsoft.Network/privateDnsZones/virtualNetwork
   }
 }
 
-resource peSearchDnsGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2023-09-01' = {
+resource peSearchDnsGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@<fetch로 확인>' = {
   parent: peSearch
   name: 'dnszg-search'
   properties: {
@@ -191,7 +203,7 @@ resource peSearchDnsGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGrou
 }
 
 // ---- Storage (ADLS Gen2 - DFS) Private Endpoint ----
-resource peStorageDfs 'Microsoft.Network/privateEndpoints@2023-09-01' = {
+resource peStorageDfs 'Microsoft.Network/privateEndpoints@<fetch로 확인>' = {
   name: 'pe-storage-dfs'
   location: location
   properties: {
@@ -206,12 +218,12 @@ resource peStorageDfs 'Microsoft.Network/privateEndpoints@2023-09-01' = {
   }
 }
 
-resource dnsZoneStorageDfs 'Microsoft.Network/privateDnsZones@2020-06-01' = {
+resource dnsZoneStorageDfs 'Microsoft.Network/privateDnsZones@<fetch로 확인>' = {
   name: 'privatelink.dfs.core.windows.net'
   location: 'global'
 }
 
-resource dnsZoneStorageDfsVnetLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2020-06-01' = {
+resource dnsZoneStorageDfsVnetLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@<fetch로 확인>' = {
   parent: dnsZoneStorageDfs
   name: 'link-storage-dfs'
   location: 'global'
@@ -221,7 +233,7 @@ resource dnsZoneStorageDfsVnetLink 'Microsoft.Network/privateDnsZones/virtualNet
   }
 }
 
-resource peStorageDfsDnsGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2023-09-01' = {
+resource peStorageDfsDnsGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@<fetch로 확인>' = {
   parent: peStorageDfs
   name: 'dnszg-storage-dfs'
   properties: {
@@ -233,7 +245,7 @@ resource peStorageDfsDnsGroup 'Microsoft.Network/privateEndpoints/privateDnsZone
 }
 
 // ---- Key Vault Private Endpoint ----
-resource peKeyVault 'Microsoft.Network/privateEndpoints@2023-09-01' = {
+resource peKeyVault 'Microsoft.Network/privateEndpoints@<fetch로 확인>' = {
   name: 'pe-keyvault'
   location: location
   properties: {
@@ -248,12 +260,12 @@ resource peKeyVault 'Microsoft.Network/privateEndpoints@2023-09-01' = {
   }
 }
 
-resource dnsZoneKeyVault 'Microsoft.Network/privateDnsZones@2020-06-01' = {
+resource dnsZoneKeyVault 'Microsoft.Network/privateDnsZones@<fetch로 확인>' = {
   name: 'privatelink.vaultcore.azure.net'
   location: 'global'
 }
 
-resource dnsZoneKeyVaultVnetLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2020-06-01' = {
+resource dnsZoneKeyVaultVnetLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@<fetch로 확인>' = {
   parent: dnsZoneKeyVault
   name: 'link-keyvault'
   location: 'global'
@@ -263,7 +275,7 @@ resource dnsZoneKeyVaultVnetLink 'Microsoft.Network/privateDnsZones/virtualNetwo
   }
 }
 
-resource peKeyVaultDnsGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2023-09-01' = {
+resource peKeyVaultDnsGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@<fetch로 확인>' = {
   parent: peKeyVault
   name: 'dnszg-keyvault'
   properties: {
@@ -282,7 +294,8 @@ Microsoft Foundry Hub와 AML Workspace는 Managed Network라는 별도 격리 �
 
 ```bicep
 // AI Hub Managed Network 아웃바운드 규칙 예시
-resource aiHubOutboundToSearch 'Microsoft.MachineLearningServices/workspaces/outboundRules@2024-04-01' = {
+// apiVersion은 MS Docs fetch 후 확인: https://learn.microsoft.com/en-us/azure/templates/microsoft.machinelearningservices/workspaces
+resource aiHubOutboundToSearch 'Microsoft.MachineLearningServices/workspaces/outboundRules@<fetch로 확인>' = {
   parent: aiHub
   name: 'allow-search'
   properties: {

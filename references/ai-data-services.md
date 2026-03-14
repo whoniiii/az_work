@@ -1,447 +1,317 @@
-# Azure AI/Data 서비스 Bicep 스니펫
+# Azure AI/Data 서비스 레퍼런스
 
-> **Microsoft Foundry 최신 아키텍처 (2025년)**
->
-> **계층 구조**: `Microsoft Foundry resource` → `Foundry Project` → Project assets (에이전트, 파일, 평가)
->
-> - **Microsoft Foundry resource**: 최상위 Azure 리소스. 모델 배포, 네트워킹, 보안 거버넌스 담당
->   - Bicep: `Microsoft.CognitiveServices/accounts` + `kind: 'AIServices'`
-> - **Foundry Project**: Foundry resource의 서브리소스. 팀/유스케이스 단위 개발 경계
->   - Bicep: `Microsoft.CognitiveServices/accounts/projects`
-> - **모델 배포**: Foundry resource 레벨에서 배포 → 프로젝트에서 공유 사용
->   - Bicep: `Microsoft.CognitiveServices/accounts/deployments`
-> - **Azure OpenAI (`kind: 'OpenAI'`)**: 레거시. Foundry (`kind: 'AIServices'`)의 서브셋
->   - 동일 리소스 프로바이더(`Microsoft.CognitiveServices`)이므로 업그레이드 가능
-> - **Hub 기반 (`Microsoft.MachineLearningServices/workspaces`)**: 레거시. ML/오픈소스 모델, Serverless API 필요 시에만 사용
-> - **API 버전**: `2025-06-01`
+> **이 파일의 목적**: 각 서비스의 개념, 리소스 타입, 핵심 속성을 정의한다.
+> API 버전은 하드코딩하지 않는다. Bicep 생성 전 반드시 MS Docs URL을 fetch하여 최신 stable apiVersion을 확인할 것.
+> (`agents/bicep-generator.md` Step 0 참조)
 
 ## 목차
-1. [Azure OpenAI / Microsoft Foundry](#azure-openai--microsoft-foundry)
+1. [Microsoft Foundry](#microsoft-foundry)
 2. [Azure AI Search](#azure-ai-search)
 3. [Microsoft Fabric](#microsoft-fabric)
-4. [ADLS Gen2 / Storage Account](#adls-gen2--storage-account)
-5. [Azure Machine Learning](#azure-machine-learning)
-6. [Key Vault](#key-vault)
-7. [Container Registry](#container-registry)
-8. [Virtual Network](#virtual-network)
+4. [Azure Data Lake Storage Gen2 (ADLS Gen2)](#azure-data-lake-storage-gen2-adls-gen2)
+5. [Azure Key Vault](#azure-key-vault)
+6. [Azure Machine Learning (AML)](#azure-machine-learning-aml)
+7. [Virtual Network / Private Endpoint](#virtual-network--private-endpoint)
 
 ---
 
-## Azure OpenAI / Microsoft Foundry
+## Microsoft Foundry
 
-### Microsoft Foundry resource (신규 권장)
+### 무엇인지
+Azure AI 서비스의 최상위 리소스. 모델 배포, 프로젝트 관리, AI Search 연결 등 모든 AI 기능을 통합 관리한다.
 
+### 계층 구조
+```
+Microsoft Foundry resource
+└── Foundry Project (accounts/projects)
+    └── Project assets (에이전트, 파일, 평가)
+모델 배포 (accounts/deployments) — Foundry resource 레벨, Project에서 공유 사용
+```
+
+### 리소스 타입
+- Foundry resource: `Microsoft.CognitiveServices/accounts`, `kind: 'AIServices'`
+- Foundry Project: `Microsoft.CognitiveServices/accounts/projects`
+- 모델 배포: `Microsoft.CognitiveServices/accounts/deployments`
+
+### 핵심 속성 (빠뜨리면 안 되는 것들)
+- `allowProjectManagement: true` — **없으면 Foundry Project 생성 불가**
+- `customSubDomainName` — **필수** (엔드포인트 도메인 결정)
+- `kind: 'AIServices'` — Foundry임을 나타내는 핵심 값. `'OpenAI'`와 혼동 금지
+- `publicNetworkAccess: 'Disabled'` — Private Endpoint 사용 시 필수
+
+### 레거시 주의
+- **Azure OpenAI (`kind: 'OpenAI'`)**: 레거시. Foundry(`kind: 'AIServices'`)의 서브셋. 신규 개발에 사용 금지
+- **Hub 기반 (`Microsoft.MachineLearningServices/workspaces`)**: 레거시. ML/오픈소스 모델, Serverless API, Managed compute가 명시적으로 필요한 경우에만 사용. 일반 AI/RAG 구성에는 Microsoft Foundry(AIServices) 사용
+
+### Bicep 구조 요약
 ```bicep
-// Microsoft Foundry resource — kind: 'AIServices' (Azure OpenAI의 superset)
-// 모델 배포, 프로젝트 관리, AI Search 연결 등 모든 AI 기능의 최상위 리소스
-param foundryName string = 'foundry-${uniqueString(resourceGroup().id)}'
-
-resource foundry 'Microsoft.CognitiveServices/accounts@2025-06-01' = {
-  name: foundryName
-  location: location  // OpenAI 지원 지역: eastus, swedencentral 등
-  kind: 'AIServices'  // 핵심 — OpenAI가 아닌 AIServices (Foundry)
-  identity: {
-    type: 'SystemAssigned'
-  }
-  sku: {
-    name: 'S0'
-  }
+// apiVersion은 MS Docs fetch 후 확인
+resource foundry 'Microsoft.CognitiveServices/accounts@<fetch로 확인>' = {
+  kind: 'AIServices'
   properties: {
-    allowProjectManagement: true  // Foundry Project 생성 활성화 필수
+    allowProjectManagement: true   // Foundry Project 생성 활성화 필수
     customSubDomainName: foundryName
-    disableLocalAuth: false       // EntraID + API Key 모두 허용 (운영 환경은 true 권장)
     publicNetworkAccess: 'Disabled'
-    networkAcls: {
-      defaultAction: 'Deny'
-      ipRules: []
-      virtualNetworkRules: []
-    }
+    ...
   }
 }
 
-// 모델 배포 — Foundry resource 레벨에서 수행, Project에서 공유 사용
-resource gpt4oDeployment 'Microsoft.CognitiveServices/accounts/deployments@2025-06-01' = {
+resource foundryProject 'Microsoft.CognitiveServices/accounts/projects@<fetch로 확인>' = {
   parent: foundry
-  name: 'gpt-4o'
-  sku: {
-    name: 'GlobalStandard'
-    capacity: 30  // TPM (Thousands of tokens per minute)
-  }
-  properties: {
-    model: {
-      format: 'OpenAI'
-      name: 'gpt-4o'
-      version: '2024-11-20'
-    }
-  }
+  ...
 }
 
-resource embeddingDeployment 'Microsoft.CognitiveServices/accounts/deployments@2025-06-01' = {
+resource modelDeployment 'Microsoft.CognitiveServices/accounts/deployments@<fetch로 확인>' = {
   parent: foundry
-  name: 'text-embedding-3-large'
-  sku: {
-    name: 'Standard'
-    capacity: 120
-  }
-  properties: {
-    model: {
-      format: 'OpenAI'
-      name: 'text-embedding-3-large'
-      version: '1'
-    }
-  }
-  dependsOn: [gpt4oDeployment]
-}
-
-// Foundry Project — Foundry resource의 서브리소스, 팀/유스케이스 단위
-param foundryProjectName string = 'proj-${uniqueString(resourceGroup().id)}'
-
-resource foundryProject 'Microsoft.CognitiveServices/accounts/projects@2025-06-01' = {
-  parent: foundry
-  name: foundryProjectName
-  location: location
-  identity: {
-    type: 'SystemAssigned'
-  }
-  properties: {}
+  ...
 }
 ```
 
-### Azure OpenAI Service (레거시 — 신규 개발 시 Microsoft Foundry 사용 권장)
-
-```bicep
-// Azure OpenAI Service — kind: 'OpenAI' (Foundry의 서브셋, 레거시)
-// 기존 호환성 유지 목적 또는 OpenAI 전용 엔드포인트가 명시적으로 필요한 경우
-param openAiName string = 'oai-${uniqueString(resourceGroup().id)}'
-
-resource openAi 'Microsoft.CognitiveServices/accounts@2025-06-01' = {
-  name: openAiName
-  location: location  // eastus, swedencentral 등 OpenAI 지원 지역
-  kind: 'OpenAI'
-  sku: { name: 'S0' }
-  properties: {
-    customSubDomainName: openAiName
-    publicNetworkAccess: 'Disabled'
-    networkAcls: {
-      defaultAction: 'Deny'
-      ipRules: []
-      virtualNetworkRules: []
-    }
-  }
-}
-```
-
-### Hub 기반 구성 (레거시 — ML/오픈소스 모델, Serverless API, Managed compute 필요 시에만)
-
-```bicep
-// Azure AI Hub — MachineLearningServices, kind: 'Hub'
-// ⚠️ 신규 개발에는 Microsoft Foundry (AIServices) 사용 권장
-// Hub 기반은 HuggingFace, NVIDIA NIM, Managed compute, Prompt flow 등 ML 기능 필요 시 사용
-param aiHubName string = 'aih-${uniqueString(resourceGroup().id)}'
-
-resource aiHub 'Microsoft.MachineLearningServices/workspaces@2024-10-01' = {
-  name: aiHubName
-  location: location
-  kind: 'Hub'
-  identity: { type: 'SystemAssigned' }
-  properties: {
-    friendlyName: aiHubName
-    storageAccount: storageAccount.id
-    keyVault: keyVault.id
-    applicationInsights: appInsights.id
-    publicNetworkAccess: 'Disabled'
-    managedNetwork: {
-      isolationMode: 'AllowOnlyApprovedOutbound'
-    }
-  }
-}
-
-// Hub-based Project (레거시)
-resource aiProject 'Microsoft.MachineLearningServices/workspaces@2024-10-01' = {
-  name: 'proj-${uniqueString(resourceGroup().id)}'
-  location: location
-  kind: 'Project'
-  identity: { type: 'SystemAssigned' }
-  properties: {
-    hubResourceId: aiHub.id
-    publicNetworkAccess: 'Disabled'
-  }
-}
-```
+### MS Docs
+- Foundry 개요: https://learn.microsoft.com/en-us/azure/ai-foundry/
+- Bicep 레퍼런스: https://learn.microsoft.com/en-us/azure/templates/microsoft.cognitiveservices/accounts
 
 ---
 
 ## Azure AI Search
 
+### 무엇인지
+벡터 검색, 시맨틱 랭킹, 풀텍스트 검색을 제공하는 검색 서비스. RAG 아키텍처의 핵심 컴포넌트.
+
+### 리소스 타입
+- `Microsoft.Search/searchServices`
+
+### 핵심 속성 (빠뜨리면 안 되는 것들)
+- `publicNetworkAccess: 'disabled'` — Private Endpoint 사용 시 필수
+- `semanticSearch: 'free'` — Semantic Ranking 활성화 (standard 이상 SKU에서 사용 가능)
+- `sku.name` — SKU 선택: `free` / `basic` / `standard` / `standard2` / `standard3`
+
+### SKU 선택 기준
+| SKU | 용도 |
+|-----|------|
+| free | 개발/테스트 (인덱스 3개, 50MB 제한) |
+| basic | 소규모 프로덕션 |
+| standard | 일반 프로덕션 (Semantic Ranking 지원) |
+| standard2/3 | 대규모 프로덕션 |
+
+> Private Endpoint는 basic 이상 SKU에서 지원
+
+### Bicep 구조 요약
 ```bicep
-param searchServiceName string = 'srch-${uniqueString(resourceGroup().id)}'
-param searchSku string = 'standard'  // free, basic, standard, standard2, standard3
-param searchReplicaCount int = 1
-param searchPartitionCount int = 1
-
-resource searchService 'Microsoft.Search/searchServices@2023-11-01' = {
-  name: searchServiceName
-  location: location
-  sku: {
-    name: searchSku
-  }
+// apiVersion은 MS Docs fetch 후 확인
+resource searchService 'Microsoft.Search/searchServices@<fetch로 확인>' = {
+  sku: { name: 'standard' }
   properties: {
-    replicaCount: searchReplicaCount
-    partitionCount: searchPartitionCount
     publicNetworkAccess: 'disabled'
-    networkRuleSet: {
-      ipRules: []
-    }
-    semanticSearch: 'free'  // Semantic ranking 활성화
-  }
-}
-
-// Managed Identity에 Search 권한 부여 (예: AI Hub → Search)
-resource searchIndexDataContributorRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  scope: searchService
-  name: guid(searchService.id, aiHub.id, '8ebe5a00-799e-43f5-93ac-243d3dce84a7')
-  properties: {
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '8ebe5a00-799e-43f5-93ac-243d3dce84a7')  // Search Index Data Contributor
-    principalId: aiHub.identity.principalId
-    principalType: 'ServicePrincipal'
+    semanticSearch: 'free'
+    ...
   }
 }
 ```
+
+### MS Docs
+- Bicep 레퍼런스: https://learn.microsoft.com/en-us/azure/templates/microsoft.search/searchservices
 
 ---
 
 ## Microsoft Fabric
 
-```bicep
-// Microsoft Fabric Capacity (F SKU)
-param fabricCapacityName string = 'fabric-${uniqueString(resourceGroup().id)}'
-param fabricSku string = 'F2'  // F2, F4, F8, F16, F32, F64 ...
-param fabricAdminEmail string  // Fabric 관리자 이메일
+### 무엇인지
+통합 분석 플랫폼. OneLake 기반의 Lakehouse, Warehouse, Dataflow, Spark 등을 제공.
 
-resource fabricCapacity 'Microsoft.Fabric/capacities@2023-11-01' = {
-  name: fabricCapacityName
-  location: location
+### 리소스 타입
+- `Microsoft.Fabric/capacities`
+
+### 핵심 속성 (빠뜨리면 안 되는 것들)
+- `administration.members` — **관리자 이메일 필수** (없으면 배포 실패)
+- `sku.name` — F SKU 선택: `F2` / `F4` / `F8` / `F16` / `F32` / `F64` 등
+- `sku.tier: 'Fabric'` — 고정값
+
+### Bicep 범위 제한
+- **Bicep으로 프로비저닝 가능한 것**: Capacity만
+- **Fabric Portal 또는 REST API로 별도 구성해야 하는 것**: Workspace, Lakehouse, Warehouse, Dataflow 등
+
+### Bicep 구조 요약
+```bicep
+// apiVersion은 MS Docs fetch 후 확인
+resource fabricCapacity 'Microsoft.Fabric/capacities@<fetch로 확인>' = {
   sku: {
-    name: fabricSku
+    name: 'F4'
     tier: 'Fabric'
   }
   properties: {
     administration: {
-      members: [fabricAdminEmail]
+      members: [fabricAdminEmail]  // 관리자 이메일 필수
     }
   }
 }
-
-// Fabric은 대부분의 설정을 Fabric Portal에서 진행
-// Bicep으로는 Capacity만 프로비저닝 가능
-// Workspace, Lakehouse, Warehouse 등은 Fabric REST API 또는 Portal 사용
-
-// Fabric에서 ADLS Gen2 OneLake 연결 시
-// → ADLS Gen2의 Storage Blob Data Contributor 역할을 Fabric managed identity에 부여
 ```
+
+### MS Docs
+- Bicep 레퍼런스: https://learn.microsoft.com/en-us/azure/templates/microsoft.fabric/capacities
 
 ---
 
-## ADLS Gen2 / Storage Account
+## Azure Data Lake Storage Gen2 (ADLS Gen2)
 
+### 무엇인지
+계층적 네임스페이스(HNS)가 활성화된 Azure Storage Account. 빅데이터 분석, Spark, Fabric OneLake 연결에 사용.
+
+### 리소스 타입
+- `Microsoft.Storage/storageAccounts`, `kind: 'StorageV2'`
+- 컨테이너: `Microsoft.Storage/storageAccounts/blobServices/containers`
+
+### 핵심 속성 (빠뜨리면 안 되는 것들)
+- `isHnsEnabled: true` — **절대 빠트리지 말 것. 없으면 일반 Blob Storage가 됨. ADLS Gen2의 핵심**
+- `allowBlobPublicAccess: false` — 보안 필수
+- `minimumTlsVersion: 'TLS1_2'` — 보안 필수
+- `publicNetworkAccess: 'Disabled'` — Private Endpoint 사용 시 필수
+- `kind: 'StorageV2'` — ADLS Gen2는 StorageV2만 지원
+
+### Private Endpoint 주의
+ADLS Gen2는 PE를 두 개 만들어야 할 수 있다:
+- `groupId: 'dfs'` — Spark/Fabric이 사용하는 DFS 엔드포인트
+- `groupId: 'blob'` — 일반 SDK가 사용하는 Blob 엔드포인트
+
+### Bicep 구조 요약
 ```bicep
-param storageAccountName string = 'st${uniqueString(resourceGroup().id)}'
-
-resource storageAccount 'Microsoft.Storage/storageAccounts@2023-01-01' = {
-  name: storageAccountName
-  location: location
+// apiVersion은 MS Docs fetch 후 확인
+resource storageAccount 'Microsoft.Storage/storageAccounts@<fetch로 확인>' = {
   kind: 'StorageV2'
-  sku: {
-    name: 'Standard_ZRS'  // Zone-redundant storage
-  }
   properties: {
-    isHnsEnabled: true  // ADLS Gen2 (Hierarchical Namespace)
-    publicNetworkAccess: 'Disabled'
+    isHnsEnabled: true              // ADLS Gen2 핵심 — 절대 빠트리지 말 것
     allowBlobPublicAccess: false
     minimumTlsVersion: 'TLS1_2'
-    supportsHttpsTrafficOnly: true
-    networkAcls: {
-      defaultAction: 'Deny'
-      bypass: 'AzureServices'
-      ipRules: []
-      virtualNetworkRules: []
-    }
-    encryption: {
-      services: {
-        blob: { enabled: true }
-        file: { enabled: true }
-      }
-      keySource: 'Microsoft.Storage'
-    }
-  }
-}
-
-// 컨테이너 생성 (raw, processed, curated 레이어 패턴)
-resource rawContainer 'Microsoft.Storage/storageAccounts/blobServices/containers@2023-01-01' = {
-  name: '${storageAccount.name}/default/raw'
-  properties: {
-    publicAccess: 'None'
-  }
-}
-
-resource processedContainer 'Microsoft.Storage/storageAccounts/blobServices/containers@2023-01-01' = {
-  name: '${storageAccount.name}/default/processed'
-  properties: {
-    publicAccess: 'None'
-  }
-}
-
-resource curatedContainer 'Microsoft.Storage/storageAccounts/blobServices/containers@2023-01-01' = {
-  name: '${storageAccount.name}/default/curated'
-  properties: {
-    publicAccess: 'None'
-  }
-}
-```
-
----
-
-## Azure Machine Learning
-
-```bicep
-param amlWorkspaceName string = 'mlw-${uniqueString(resourceGroup().id)}'
-
-resource amlWorkspace 'Microsoft.MachineLearningServices/workspaces@2024-10-01' = {
-  name: amlWorkspaceName
-  location: location
-  kind: 'Default'  // 일반 AML Workspace (Hub/Project와 구분)
-  identity: {
-    type: 'SystemAssigned'
-  }
-  properties: {
-    friendlyName: amlWorkspaceName
-    storageAccount: storageAccount.id
-    keyVault: keyVault.id
-    containerRegistry: containerRegistry.id  // 선택사항
     publicNetworkAccess: 'Disabled'
-    managedNetwork: {
-      isolationMode: 'AllowOnlyApprovedOutbound'
-    }
+    ...
   }
 }
 ```
 
+### MS Docs
+- Bicep 레퍼런스: https://learn.microsoft.com/en-us/azure/templates/microsoft.storage/storageaccounts
+
 ---
 
-## Key Vault
+## Azure Key Vault
 
+### 무엇인지
+시크릿, 인증서, 키를 안전하게 저장하고 관리하는 서비스.
+
+### 리소스 타입
+- `Microsoft.KeyVault/vaults`
+
+### 핵심 속성 (빠뜨리면 안 되는 것들)
+- `enableRbacAuthorization: true` — **RBAC 방식 사용 필수. Access Policy 방식 사용 금지**
+- `enablePurgeProtection: true` — 삭제된 Vault 영구 삭제 방지 (규정 준수)
+- `softDeleteRetentionInDays: 90` — 소프트 삭제 보존 기간
+- `publicNetworkAccess: 'disabled'` — Private Endpoint 사용 시 필수
+- `networkAcls.bypass: 'AzureServices'` — ARM 배포 및 Azure 서비스 접근 허용
+
+### Bicep 구조 요약
 ```bicep
-param keyVaultName string = 'kv-${uniqueString(resourceGroup().id)}'
-
-resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' = {
-  name: keyVaultName
-  location: location
+// apiVersion은 MS Docs fetch 후 확인
+resource keyVault 'Microsoft.KeyVault/vaults@<fetch로 확인>' = {
   properties: {
-    sku: {
-      family: 'A'
-      name: 'standard'
-    }
-    tenantId: subscription().tenantId
-    enableRbacAuthorization: true  // RBAC 방식 (Access Policy 아님)
-    enableSoftDelete: true
-    softDeleteRetentionInDays: 90
+    enableRbacAuthorization: true   // Access Policy 방식 사용 금지
     enablePurgeProtection: true
+    softDeleteRetentionInDays: 90
     publicNetworkAccess: 'disabled'
     networkAcls: {
       defaultAction: 'Deny'
       bypass: 'AzureServices'
     }
-  }
-}
-
-// Key Vault Secrets Officer 역할 부여 (예: 배포 서비스 주체에게)
-resource kvSecretsOfficer 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  scope: keyVault
-  name: guid(keyVault.id, deployer, 'b86a8fe4-44ce-4948-aee5-eccb2c155cd7')
-  properties: {
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'b86a8fe4-44ce-4948-aee5-eccb2c155cd7')
-    principalId: deployer  // 배포 주체의 Object ID
-    principalType: 'User'
+    ...
   }
 }
 ```
 
+### MS Docs
+- Bicep 레퍼런스: https://learn.microsoft.com/en-us/azure/templates/microsoft.keyvault/vaults
+
 ---
 
-## Container Registry
+## Azure Machine Learning (AML)
 
+### 무엇인지
+ML 모델 훈련, 실험, 배포를 위한 플랫폼. 오픈소스 모델, HuggingFace, Managed compute가 필요한 경우에 사용.
+
+> **주의**: 일반 AI/RAG 구성에는 Microsoft Foundry(AIServices)를 사용한다. AML Hub/Project 기반은 레거시이며 ML 전용이다.
+
+### 리소스 타입
+- AML Workspace: `Microsoft.MachineLearningServices/workspaces`, `kind: 'Default'`
+- Hub (레거시): `kind: 'Hub'`
+- Hub Project (레거시): `kind: 'Project'`
+
+### 핵심 속성
+- `storageAccount` — 연결할 Storage Account ID (필수)
+- `keyVault` — 연결할 Key Vault ID (필수)
+- `publicNetworkAccess: 'Disabled'` — Private Endpoint 사용 시 필수
+- Hub의 경우 `managedNetwork.isolationMode: 'AllowOnlyApprovedOutbound'` 권장
+
+### Bicep 구조 요약
 ```bicep
-param acrName string = 'cr${uniqueString(resourceGroup().id)}'
-
-resource containerRegistry 'Microsoft.ContainerRegistry/registries@2023-07-01' = {
-  name: acrName
-  location: location
-  sku: {
-    name: 'Premium'  // Private Endpoint는 Premium SKU 필요
-  }
+// apiVersion은 MS Docs fetch 후 확인
+resource amlWorkspace 'Microsoft.MachineLearningServices/workspaces@<fetch로 확인>' = {
+  kind: 'Default'  // 일반 AML Workspace
   properties: {
-    adminUserEnabled: false
+    storageAccount: storageAccount.id
+    keyVault: keyVault.id
     publicNetworkAccess: 'Disabled'
-    networkRuleBypassOptions: 'AzureServices'
+    ...
   }
 }
 ```
 
+### MS Docs
+- Bicep 레퍼런스: https://learn.microsoft.com/en-us/azure/templates/microsoft.machinelearningservices/workspaces
+
 ---
 
-## Virtual Network
+## Virtual Network / Private Endpoint
 
+### 무엇인지
+- **VNet**: Azure 리소스들의 격리된 네트워크 환경
+- **Private Endpoint**: VNet 내 프라이빗 IP로 PaaS 서비스에 접근. 인터넷을 통하지 않고 내부 네트워크만 사용
+
+### 리소스 타입
+- VNet: `Microsoft.Network/virtualNetworks`
+- Private Endpoint: `Microsoft.Network/privateEndpoints`
+- Private DNS Zone: `Microsoft.Network/privateDnsZones`
+
+### 핵심 속성 (빠뜨리면 안 되는 것들)
+- pe-subnet에 `privateEndpointNetworkPolicies: 'Disabled'` — **없으면 PE 배포 불가**
+- Private DNS Zone + VNet Link + DNS Zone Group — **3종 세트 필수** (하나라도 빠지면 DNS 해석 실패)
+- DNS Zone의 `registrationEnabled: false` — PaaS 서비스용 고정값 (VM 자동등록 불필요)
+
+### 3종 세트 패턴
+각 서비스마다 아래 3가지를 반드시 함께 생성:
+1. `Microsoft.Network/privateEndpoints` (pe-subnet에 배치)
+2. `Microsoft.Network/privateDnsZones` + VNet Link (`registrationEnabled: false`)
+3. `Microsoft.Network/privateEndpoints/privateDnsZoneGroups`
+
+### Bicep 구조 요약
 ```bicep
-param vnetName string = 'vnet-${uniqueString(resourceGroup().id)}'
-param vnetAddressPrefix string = '10.0.0.0/16'
-
-// 서브넷 구성 예시
-// - pe-subnet: Private Endpoint 전용 (NSG 불필요, PrivateEndpointNetworkPolicies 비활성화 필요)
-// - app-subnet: App Service / AKS 등 워크로드 (위임 가능)
-// - training-subnet: AML Compute (서비스 엔드포인트 추가 가능)
-
-resource vnet 'Microsoft.Network/virtualNetworks@2023-09-01' = {
-  name: vnetName
-  location: location
+// apiVersion은 MS Docs fetch 후 확인
+resource vnet 'Microsoft.Network/virtualNetworks@<fetch로 확인>' = {
   properties: {
-    addressSpace: {
-      addressPrefixes: [vnetAddressPrefix]
-    }
     subnets: [
       {
         name: 'pe-subnet'
         properties: {
-          addressPrefix: '10.0.1.0/24'
-          // Private Endpoint는 이 설정이 반드시 필요
-          privateEndpointNetworkPolicies: 'Disabled'
-          privateLinkServiceNetworkPolicies: 'Disabled'
-        }
-      }
-      {
-        name: 'app-subnet'
-        properties: {
-          addressPrefix: '10.0.2.0/24'
-          privateEndpointNetworkPolicies: 'Disabled'
-        }
-      }
-      {
-        name: 'training-subnet'
-        properties: {
-          addressPrefix: '10.0.3.0/24'
-          serviceEndpoints: [
-            { service: 'Microsoft.Storage' }
-            { service: 'Microsoft.KeyVault' }
-          ]
+          privateEndpointNetworkPolicies: 'Disabled'  // PE 배포 필수 설정
+          ...
         }
       }
     ]
   }
 }
-
-// 서브넷 참조용
-var peSubnetId = '${vnet.id}/subnets/pe-subnet'
-var appSubnetId = '${vnet.id}/subnets/app-subnet'
 ```
+
+### MS Docs
+- VNet Bicep 레퍼런스: https://learn.microsoft.com/en-us/azure/templates/microsoft.network/virtualnetworks
+- Private Endpoint Bicep 레퍼런스: https://learn.microsoft.com/en-us/azure/templates/microsoft.network/privateendpoints
+- Private DNS Zones Bicep 레퍼런스: https://learn.microsoft.com/en-us/azure/templates/microsoft.network/privatednszones
 
 ---
 
@@ -451,12 +321,9 @@ var appSubnetId = '${vnet.id}/subnets/app-subnet'
 |--------|--------|------|
 | Resource Group | rg- | rg-ai-platform-prod |
 | Virtual Network | vnet- | vnet-ai-prod-krc |
-| Azure OpenAI | oai- | oai-gpt4-prod |
+| Azure OpenAI / Foundry | oai- / foundry- | foundry-ai-prod |
 | AI Search | srch- | srch-docs-prod |
-| AI Hub | aih- | aih-foundry-prod |
-| AI Project | aip- | aip-rag-prod |
 | Storage Account | st | stailakeprod |
 | Key Vault | kv- | kv-ai-secrets-prod |
 | Fabric Capacity | fabric- | fabric-analytics-prod |
 | AML Workspace | mlw- | mlw-training-prod |
-| Container Registry | cr | crmlprod |
