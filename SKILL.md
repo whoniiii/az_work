@@ -83,8 +83,14 @@ Claude 질문 예시:
 
 **중요: `--output`은 반드시 `archi_diagram.html`로 고정한다. 절대 다른 이름을 사용하지 않는다.**
 
+**스크립트 경로 탐색 — 아래 순서로 찾는다:**
 ```bash
-DIAGRAM_SCRIPT=$(find ~/.claude/skills/azure-arch-builder -name "generate_html_diagram.py" 2>/dev/null | head -1)
+# 1순위: 프로젝트 로컬 스킬 폴더
+DIAGRAM_SCRIPT=$(find .claude/skills/azure-arch-builder -name "generate_html_diagram.py" 2>/dev/null | head -1)
+# 2순위: 글로벌 스킬 폴더
+if [ -z "$DIAGRAM_SCRIPT" ]; then
+  DIAGRAM_SCRIPT=$(find ~/.claude/skills/azure-arch-builder -name "generate_html_diagram.py" 2>/dev/null | head -1)
+fi
 python "$DIAGRAM_SCRIPT" \
   --services '<JSON>' \
   --connections '<JSON>' \
@@ -95,8 +101,6 @@ python "$DIAGRAM_SCRIPT" \
 **services JSON 형식 (최신 Azure 서비스 명칭 사용):**
 ```json
 [
-  {"id": "openai", "name": "Azure OpenAI Service", "type": "openai", "sku": "S0", "private": true,
-   "details": ["gpt-4o (30K TPM)", "text-embedding-3-large (120K TPM)"]},
   {"id": "foundry", "name": "Microsoft Foundry", "type": "ai_foundry", "sku": "S0 (AIServices)", "private": true,
    "details": ["kind: AIServices", "gpt-4o 배포", "text-embedding-3-large 배포"]},
   {"id": "foundry_project", "name": "Foundry Project", "type": "ai_hub", "sku": "Project", "private": true,
@@ -108,6 +112,26 @@ python "$DIAGRAM_SCRIPT" \
   {"id": "kv", "name": "Azure Key Vault", "type": "keyvault", "sku": "Standard", "private": true,
    "details": ["RBAC 방식", "Soft Delete 90일"]}
 ]
+```
+
+**Private Endpoint 사용 시 — PE 노드 추가 필수:**
+
+Private Endpoint가 포함된 아키텍처라면, 각 서비스마다 PE 노드를 services JSON에 반드시 추가하고 connections에도 연결을 넣어야 다이어그램에 표시된다.
+
+```json
+// services에 추가
+{"id": "pe_foundry", "name": "PE: Foundry", "type": "pe", "details": ["groupId: account"]},
+{"id": "pe_search",  "name": "PE: AI Search", "type": "pe", "details": ["groupId: searchService"]},
+{"id": "pe_storage_dfs",  "name": "PE: Storage (dfs)", "type": "pe", "details": ["groupId: dfs"]},
+{"id": "pe_storage_blob", "name": "PE: Storage (blob)", "type": "pe", "details": ["groupId: blob"]},
+{"id": "pe_kv",      "name": "PE: Key Vault", "type": "pe", "details": ["groupId: vault"]}
+
+// connections에 추가 (서비스 → PE 방향)
+{"from": "foundry", "to": "pe_foundry", "label": "", "type": "private"},
+{"from": "search",  "to": "pe_search",  "label": "", "type": "private"},
+{"from": "storage", "to": "pe_storage_dfs",  "label": "", "type": "private"},
+{"from": "storage", "to": "pe_storage_blob", "label": "", "type": "private"},
+{"from": "kv",      "to": "pe_kv",      "label": "", "type": "private"}
 ```
 
 > **서비스 명칭 및 아키텍처 규칙**: 반드시 최신 공식 명칭과 구조를 사용한다.
