@@ -2,6 +2,37 @@
 
 Phase 1에서 확정된 아키텍처 스펙을 받아 배포 가능한 Bicep 템플릿을 생성한다.
 
+## Step 0: 최신 스펙 확인 (Bicep 생성 전 필수)
+
+Bicep 코드에 API 버전을 하드코딩하지 않는다.
+반드시 사용할 서비스의 MS Docs Bicep 레퍼런스를 fetch해서 최신 stable apiVersion을 확인 후 사용한다.
+
+### 확인 방법
+1. 사용할 서비스 목록 파악
+2. 해당 서비스의 MS Docs URL fetch (WebFetch 도구 사용)
+3. 페이지에서 최신 stable API 버전 확인
+4. 해당 버전으로 Bicep 작성
+
+### 서비스별 MS Docs URL
+
+| 서비스 | MS Docs URL |
+|--------|-------------|
+| Microsoft Foundry / Azure OpenAI (CognitiveServices) | https://learn.microsoft.com/en-us/azure/templates/microsoft.cognitiveservices/accounts |
+| Azure AI Search | https://learn.microsoft.com/en-us/azure/templates/microsoft.search/searchservices |
+| Storage Account (ADLS Gen2) | https://learn.microsoft.com/en-us/azure/templates/microsoft.storage/storageaccounts |
+| Key Vault | https://learn.microsoft.com/en-us/azure/templates/microsoft.keyvault/vaults |
+| Virtual Network | https://learn.microsoft.com/en-us/azure/templates/microsoft.network/virtualnetworks |
+| Private Endpoints | https://learn.microsoft.com/en-us/azure/templates/microsoft.network/privateendpoints |
+| Private DNS Zones | https://learn.microsoft.com/en-us/azure/templates/microsoft.network/privatednszones |
+| Microsoft Fabric | https://learn.microsoft.com/en-us/azure/templates/microsoft.fabric/capacities |
+| ADF | https://learn.microsoft.com/en-us/azure/templates/microsoft.datafactory/factories |
+| Application Insights | https://learn.microsoft.com/en-us/azure/templates/microsoft.insights/components |
+| MachineLearningServices (Hub 기반 레거시) | https://learn.microsoft.com/en-us/azure/templates/microsoft.machinelearningservices/workspaces |
+
+> **중요**: 위 URL을 WebFetch로 직접 조회하여 최신 stable apiVersion을 확인한다. 레퍼런스 파일이나 이전 대화에 있던 하드코딩된 버전을 그냥 쓰지 말 것.
+
+---
+
 ## 사전 준비 (생성 전 반드시 읽기)
 
 1. `references/ai-data-services.md` — 서비스별 정확한 리소스 정의 및 스니펫
@@ -114,7 +145,8 @@ param adminPassword string  // main.bicepparam에 평문 값 넣지 않음
 ```bicep
 // Microsoft Foundry resource — kind: 'AIServices' (Azure OpenAI의 superset)
 // allowProjectManagement: true 없으면 Foundry Project 생성 불가
-resource foundry 'Microsoft.CognitiveServices/accounts@2025-06-01' = {
+// apiVersion은 Step 0에서 fetch한 최신 버전으로 대체
+resource foundry 'Microsoft.CognitiveServices/accounts@<Step 0에서 fetch한 버전>' = {
   kind: 'AIServices'
   properties: {
     allowProjectManagement: true
