@@ -108,7 +108,16 @@ python "$DIAGRAM_SCRIPT" \
 
 ### 1-3. 대화를 통한 아키텍처 확정
 
-사용자 피드백을 받을 때마다 다이어그램을 업데이트하고 새 링크를 제공한다.
+사용자가 서비스 추가/변경/삭제를 요청할 때마다:
+1. **현재 services/connections JSON을 유지한 채로** 요청된 변경만 반영
+2. 업데이트된 JSON으로 다이어그램을 재생성 (`archi_diagram.html` 덮어쓰기)
+3. 새 링크를 사용자에게 제공
+
+**서비스 추가 요청 처리 예시**:
+- "VM 추가해줘, Bastion으로 쓸거야" → services JSON에 `{"id":"bastion","name":"Azure Bastion","type":"bastion",...}` 추가, connections 업데이트 후 재생성
+- "AI Search 빼줘" → services JSON에서 해당 항목 제거 후 재생성
+- "OpenAI SKU를 S1으로 바꿔줘" → 해당 항목의 sku 값만 수정 후 재생성
+
 서비스 목록과 네트워킹 방식이 확정되면 아래 순서로 나머지 정보를 수집한다.
 
 **Step 1: Azure 로그인 확인**
