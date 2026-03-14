@@ -127,8 +127,9 @@ def generate_html(services: list, connections: list, title: str) -> str:
     flex: 1; position: relative; overflow: hidden; background: #fafafa;
     background-image: radial-gradient(circle, #ddd 1px, transparent 1px);
     background-size: 24px 24px;
+    height: 100%;
   }}
-  #canvas {{ width: 100%; height: 100%; }}
+  #canvas {{ position: absolute; top: 0; left: 0; width: 100%; height: 100%; }}
 
   /* Sidebar */
   .sidebar {{
@@ -456,6 +457,13 @@ function renderDiagram() {{
     sku.setAttribute('font-family', 'Segoe UI, sans-serif');
     sku.textContent = node.sku;
 
+    // rect, accent 먼저 (배경) → 그 위에 텍스트들
+    g.appendChild(rect); g.appendChild(accent);
+
+    // Icon
+    g.appendChild(icon);
+    g.appendChild(name); g.appendChild(sku);
+
     // Private indicator
     if (node.private) {{
       const lockIcon = document.createElementNS('http://www.w3.org/2000/svg', 'text');
@@ -475,9 +483,6 @@ function renderDiagram() {{
       g.appendChild(detail);
     }});
 
-    g.appendChild(rect); g.appendChild(accent); g.appendChild(icon);
-    g.appendChild(name); g.appendChild(sku);
-
     // Drag events
     g.addEventListener('mousedown', e => {{
       dragging = node.id;
@@ -490,7 +495,7 @@ function renderDiagram() {{
     // Tooltip
     g.addEventListener('mouseenter', e => {{
       const tooltip = document.getElementById('tooltip');
-      const details = node.details.join('\n• ');
+      const details = node.details.join('\\n• ');
       tooltip.style.display = 'block';
       tooltip.innerHTML = `<strong>${{node.icon}} ${{node.name}}</strong><br>SKU: ${{node.sku || 'N/A'}}<br>Private: ${{node.private ? '✅' : '❌'}}`;
     }});
@@ -539,10 +544,14 @@ function fitToScreen() {{
   const svg = document.getElementById('canvas');
   const root = document.getElementById('diagram-root');
   const bbox = root.getBBox();
-  if (!bbox.width) return;
-  const scaleX = (svg.clientWidth - 80) / bbox.width;
-  const scaleY = (svg.clientHeight - 100) / bbox.height;
+  if (!bbox.width || !bbox.height) return;
+  const w = svg.clientWidth || svg.getBoundingClientRect().width;
+  const h = svg.clientHeight || svg.getBoundingClientRect().height;
+  if (!w || !h) return;
+  const scaleX = (w - 80) / bbox.width;
+  const scaleY = (h - 100) / bbox.height;
   const scale = Math.min(scaleX, scaleY, 1.5);
+  if (scale <= 0) return;
   const tx = (svg.clientWidth - bbox.width * scale) / 2 - bbox.x * scale;
   const ty = (svg.clientHeight - bbox.height * scale) / 2 - bbox.y * scale;
   root.setAttribute('transform', `translate(${{tx}},${{ty}}) scale(${{scale}})`);
@@ -626,7 +635,7 @@ def main():
     parser.add_argument("--services", type=str, required=True)
     parser.add_argument("--connections", type=str, required=True)
     parser.add_argument("--title", type=str, default="Azure Architecture")
-    parser.add_argument("--output", type=str, required=True)
+    parser.add_argument("--output", type=str, default="archi_diagram.html")
     args = parser.parse_args()
 
     try:
