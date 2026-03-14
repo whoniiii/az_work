@@ -17,7 +17,14 @@ git clone https://github.com/whoniiii/az_work ~/.claude/skills/azure-arch-builde
 
 ## 사용법
 
-설치 후 Claude Code에서 Azure 인프라 관련 요청을 하면 스킬이 자동으로 발동됩니다. 별도 명령어 없이 자연어로 말하면 됩니다.
+설치 후 프로젝트 폴더에서 Claude Code를 실행합니다.
+
+```bash
+cd your-project
+claude
+```
+
+Azure 인프라 관련 요청을 하면 스킬이 자동으로 발동됩니다. 별도 명령어 없이 자연어로 말하면 됩니다.
 
 ```
 "AI Search랑 Foundry Hub 만들어줘, private endpoint 포함해서"
