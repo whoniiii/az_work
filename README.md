@@ -37,17 +37,6 @@ mkdir -p .claude/skills
 git clone https://github.com/whoniiii/az_work .claude/skills/azure-arch-builder
 ```
 
----
-
-## 업데이트
-
-```bash
-# 전역 설치한 경우
-cd ~/.claude/skills/azure-arch-builder && git pull
-
-# 프로젝트 로컬 설치한 경우
-cd .claude/skills/azure-arch-builder && git pull
-```
 
 ---
 
