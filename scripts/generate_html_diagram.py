@@ -320,12 +320,19 @@ NODES_DATA.forEach(n => {{
 
 // Assign positions
 const positions = {{}};
-const catKeys = Object.keys(categoryGroups);
-const cols = Math.ceil(Math.sqrt(NODES_DATA.length));
+
+// PE 노드는 연결된 리소스 바로 아래에 배치 — 나머지 노드 먼저 배치 후 처리
+const peNodes = NODES_DATA.filter(n => n.type === 'pe');
+const nonPeNodes = NODES_DATA.filter(n => n.type !== 'pe');
+
+const catKeys = Object.keys(categoryGroups).filter(c =>
+  nonPeNodes.some(n => n.category === c)
+);
+const cols = Math.ceil(Math.sqrt(nonPeNodes.length));
 
 let xi = 0, yi = 0;
 catKeys.forEach(cat => {{
-  const nodes = categoryGroups[cat];
+  const nodes = nonPeNodes.filter(n => n.category === cat);
   nodes.forEach((n, i) => {{
     positions[n.id] = {{
       x: PADDING + (xi % cols) * (NODE_W + 60),
@@ -335,6 +342,16 @@ catKeys.forEach(cat => {{
     if (xi % cols === 0) yi++;
   }});
   yi++;
+}});
+
+// PE 노드: 연결된 리소스(edge의 to) 바로 아래에 배치
+peNodes.forEach(pe => {{
+  const edge = EDGES_DATA.find(e => e.from === pe.id || e.to === pe.id);
+  const parentId = edge ? (edge.from === pe.id ? edge.to : edge.from) : null;
+  const parentPos = parentId ? positions[parentId] : null;
+  positions[pe.id] = parentPos
+    ? {{ x: parentPos.x, y: parentPos.y + NODE_H + 30 }}
+    : {{ x: PADDING + xi * (NODE_W + 60), y: PADDING }};
 }});
 
 // Dragging state
