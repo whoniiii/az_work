@@ -64,14 +64,9 @@ Claude 질문 예시:
 [인터랙티브 다이어그램 링크]
 
 **확정된 구성:**
-- Microsoft Foundry (AIServices, eastus) — gpt-4o + text-embedding-3-large
-- Foundry Project — 에이전트/평가 작업 공간
-- Azure AI Search (Standard) — 벡터 검색
-- Azure Data Lake Storage Gen2 — 문서 스토리지
-- Azure Key Vault — 시크릿 관리
-- VNet + Private Endpoint — 네트워크 격리
+- [사용자 요구사항에 따라 확정된 서비스 목록 나열]
 
-**위치**: koreacentral (Foundry/OpenAI: eastus)
+**위치**: [확정된 region]
 
 바꾸거나 추가할 부분 있으면 말씀해주세요.
 ```
@@ -102,58 +97,40 @@ python "$DIAGRAM_SCRIPT" \
   --output "archi_diagram.html"
 ```
 
-**services JSON 형식 (최신 Azure 서비스 명칭 사용):**
+**services JSON 형식:**
+
+사용자의 확정된 서비스 목록에 따라 동적으로 구성한다. 아래는 JSON 구조 설명이다.
+
 ```json
 [
-  {"id": "foundry", "name": "Microsoft Foundry", "type": "ai_foundry", "sku": "S0 (AIServices)", "private": true,
-   "details": ["kind: AIServices", "gpt-4o 배포", "text-embedding-3-large 배포"]},
-  {"id": "foundry_project", "name": "Foundry Project", "type": "ai_hub", "sku": "Project", "private": true,
-   "details": ["Foundry resource 하위 프로젝트", "에이전트/평가 작업 공간"]},
-  {"id": "search", "name": "Azure AI Search", "type": "search", "sku": "Standard", "private": true,
-   "details": ["Semantic Ranking 활성화", "벡터 검색 지원"]},
-  {"id": "storage", "name": "Azure Data Lake Storage Gen2", "type": "storage", "sku": "Standard ZRS", "private": true,
-   "details": ["Hierarchical Namespace", "raw/processed/curated 컨테이너"]},
-  {"id": "kv", "name": "Azure Key Vault", "type": "keyvault", "sku": "Standard", "private": true,
-   "details": ["RBAC 방식", "Soft Delete 90일"]}
+  {"id": "고유ID", "name": "서비스 표시명", "type": "아이콘타입", "sku": "SKU", "private": true/false,
+   "details": ["상세 정보 줄1", "상세 정보 줄2"]}
 ]
 ```
+
+사용 가능한 type 값: `ai_foundry`, `ai_hub`, `openai`, `search`, `storage`, `keyvault`, `fabric`, `vm`, `bastion`, `vpn`, `adf`, `pe` 등 (generate_html_diagram.py의 SERVICE_ICONS 참조)
 
 **Private Endpoint 사용 시 — PE 노드 추가 필수:**
 
 Private Endpoint가 포함된 아키텍처라면, 각 서비스마다 PE 노드를 services JSON에 반드시 추가하고 connections에도 연결을 넣어야 다이어그램에 표시된다.
 
 ```json
-// services에 추가
-{"id": "pe_foundry", "name": "PE: Foundry", "type": "pe", "details": ["groupId: account"]},
-{"id": "pe_search",  "name": "PE: AI Search", "type": "pe", "details": ["groupId: searchService"]},
-{"id": "pe_storage_dfs",  "name": "PE: Storage (dfs)", "type": "pe", "details": ["groupId: dfs"]},
-{"id": "pe_storage_blob", "name": "PE: Storage (blob)", "type": "pe", "details": ["groupId: blob"]},
-{"id": "pe_kv",      "name": "PE: Key Vault", "type": "pe", "details": ["groupId: vault"]}
+// 각 서비스에 대응하는 PE 노드 추가
+{"id": "pe_서비스ID", "name": "PE: 서비스명", "type": "pe", "details": ["groupId: 해당그룹ID"]}
 
-// connections에 추가 (서비스 → PE 방향)
-{"from": "foundry", "to": "pe_foundry", "label": "", "type": "private"},
-{"from": "search",  "to": "pe_search",  "label": "", "type": "private"},
-{"from": "storage", "to": "pe_storage_dfs",  "label": "", "type": "private"},
-{"from": "storage", "to": "pe_storage_blob", "label": "", "type": "private"},
-{"from": "kv",      "to": "pe_kv",      "label": "", "type": "private"}
+// connections에 서비스 → PE 연결 추가
+{"from": "서비스ID", "to": "pe_서비스ID", "label": "", "type": "private"}
 ```
 
-> **서비스 명칭 및 아키텍처 규칙**: 반드시 최신 공식 명칭과 구조를 사용한다.
-> - **Microsoft Foundry** = `Microsoft.CognitiveServices/accounts` + `kind: 'AIServices'` (최상위)
->   - 모델(gpt-4o 등)은 Foundry resource 레벨에서 배포, Project에서 공유 사용
->   - `allowProjectManagement: true` 없으면 Project 생성 불가
-> - **Foundry Project** = `Microsoft.CognitiveServices/accounts/projects` (Foundry의 서브리소스)
-> - **Azure OpenAI Service** (`kind: 'OpenAI'`) = 레거시. Foundry(AIServices)의 서브셋. 신규 개발 시 Microsoft Foundry 사용
-> - **Hub 기반** (`Microsoft.MachineLearningServices`) = 레거시. ML/오픈소스 모델, Serverless API 필요 시에만
-> - **Azure AI Search** — 정확한 명칭
-> - **Azure Data Lake Storage Gen2** — 정확한 명칭 (ADLS Gen2)
+PE의 groupId는 서비스별로 다르다. `references/private-endpoints.md`의 DNS Zone 매핑 테이블을 참조한다.
+
+> **서비스 명칭 규칙**: 반드시 최신 Azure 공식 명칭을 사용한다. 명칭이 확실하지 않으면 MS Docs를 확인한다.
+> 서비스별 리소스 타입과 핵심 속성은 `references/ai-data-services.md`를 참조한다.
 
 **connections JSON 형식:**
 ```json
 [
-  {"from": "openai", "to": "search", "label": "벡터 검색", "type": "api"},
-  {"from": "search", "to": "storage", "label": "문서 인덱싱", "type": "data"},
-  {"from": "openai", "to": "kv", "label": "API Key 참조", "type": "security"}
+  {"from": "서비스A_ID", "to": "서비스B_ID", "label": "연결 설명", "type": "api|data|security|private"}
 ]
 ```
 
@@ -266,7 +243,7 @@ az group list --output table
 ├── main.bicepparam         # 파라미터 (환경별 값)
 └── modules/
     ├── network.bicep       # VNet, Subnet (private endpoint subnet 포함)
-    ├── ai.bicep            # OpenAI, AI Search, Microsoft Foundry
+    ├── ai.bicep            # AI 서비스 (사용자 요구에 따라 구성)
     ├── storage.bicep       # ADLS Gen2 (isHnsEnabled: true)
     ├── fabric.bicep        # Microsoft Fabric (필요 시)
     ├── keyvault.bicep      # Key Vault
@@ -303,8 +280,8 @@ az group list --output table
 - [ ] ADLS Gen2 `isHnsEnabled: true` 설정됨
 - [ ] Private Endpoint마다 DNS Zone Group 생성됨
 - [ ] pe-subnet `privateEndpointNetworkPolicies: 'Disabled'` 설정됨
-- [ ] Microsoft Foundry Hub: `kind: 'Hub'`, Project: `kind: 'Project'` 올바름
-- [ ] OpenAI 모델 배포 apiVersion이 최신 stable 버전
+- [ ] 서비스별 리소스 타입과 kind 값이 `references/ai-data-services.md`와 일치
+- [ ] 모든 apiVersion이 MS Docs 기준 최신 stable 버전
 
 **모범사례 (Medium)**
 - [ ] `uniqueString()` 사용으로 리소스명 충돌 방지
@@ -397,18 +374,15 @@ az deployment group show \
 
 ### 단계 5: 배포 완료 보고
 ```
-## 배포 완료! 🎉
+## 배포 완료!
 
-생성된 리소스 (12개):
-✅ vnet-prod-krc (VNet)
-✅ oai-xxxx (Azure OpenAI) — 엔드포인트: https://oai-xxxx.openai.azure.com/
-✅ srch-xxxx (AI Search) — 엔드포인트: https://srch-xxxx.search.windows.net/
-...
+생성된 리소스 (N개):
+[실제 배포 결과에서 리소스명, 타입, 엔드포인트를 동적으로 추출하여 나열]
 
 ## 다음 단계
 1. Azure Portal에서 리소스 확인
-2. Key Vault에 연결 문자열 저장 (필요 시 도움 가능)
-3. Private Endpoint 연결 상태 확인
+2. Private Endpoint 연결 상태 확인
+3. 필요 시 추가 구성 안내
 
 ## 정리 명령어 (필요 시)
 az group delete --name <RG_NAME> --yes --no-wait
@@ -418,29 +392,18 @@ az group delete --name <RG_NAME> --yes --no-wait
 
 ## 빠른 참조
 
-### AI/Data 시나리오별 기본 구성
-
-| 시나리오 | 서비스 조합 | Private Endpoint |
-|---------|-----------|-----------------|
-| RAG 챗봇 | Microsoft Foundry (AIServices) + Foundry Project + Azure AI Search + Azure Data Lake Storage Gen2 + Azure Key Vault | account, searchService, dfs/blob, vault |
-| Microsoft Foundry (full) | Microsoft Foundry (AIServices) + Foundry Project + Azure AI Search + Azure Data Lake Storage Gen2 + Azure Key Vault | account, searchService, dfs, vault |
-| Data Lakehouse | Microsoft Fabric + Azure Data Lake Storage Gen2 + Azure Data Factory + (Azure AI Search) | dfs, blob |
-| ML Platform (레거시 Hub) | Azure AI Hub + Hub Project + Azure AI Search + Azure Data Lake Storage Gen2 + Azure Key Vault | amlworkspace, searchService, dfs, vault |
-
 ### 기본값
 
-- **위치**: koreacentral (OpenAI는 eastus 또는 swedencentral)
+- **위치**: koreacentral (일부 서비스는 지역 제한이 있으므로 MS Docs에서 가용 지역 확인)
 - **네트워킹**: Private Endpoint 기본 적용
 - **VNet CIDR**: 10.0.0.0/16, pe-subnet: 10.0.1.0/24
-- **스토리지 이중화**: Standard_ZRS
-- **Key Vault**: RBAC 방식, Soft Delete 90일, Purge Protection 활성화
 
-### 비용 예상 가이드
+### 참조 파일
 
-| 구성 | 월 예상 비용 |
-|-----|------------|
-| OpenAI S0 + AI Search Standard | $100-$500+ (사용량) |
-| Fabric F4 | ~$730/월 (항상 켜진 경우) |
-| ADLS Gen2 (1TB) | ~$20/월 |
-| Key Vault Standard | ~$5/월 |
-| VNet + Private Endpoint | 소액 |
+서비스별 리소스 타입, 핵심 속성, SKU, PE 매핑 등 Azure 서비스 상세 정보는 아래 파일을 참조한다.
+이 파일들의 정보도 오래될 수 있으므로, Bicep 생성 시에는 반드시 MS Docs를 fetch하여 최신 정보를 확인한다.
+
+- `references/ai-data-services.md` — 서비스별 리소스 정의 및 핵심 속성
+- `references/private-endpoints.md` — PE groupId 및 DNS Zone 매핑
+- `agents/bicep-generator.md` — Bicep 생성 규칙 및 MS Docs URL 목록
+- `agents/bicep-reviewer.md` — 코드 리뷰 체크리스트

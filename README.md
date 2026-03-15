@@ -27,31 +27,36 @@ claude
 Azure 인프라 관련 요청을 하면 스킬이 자동으로 발동됩니다. 별도 명령어 없이 자연어로 말하면 됩니다.
 
 ```
-"AI Search랑 Microsoft Foundry Hub 만들어줘, private endpoint 포함해서"
+"AI Search랑 Microsoft Foundry 만들어줘, private endpoint 포함해서"
 "RAG 챗봇 아키텍처 구성해줘"
 "Azure에 데이터 레이크하우스 올려줘"
 ```
 
 이후 Claude가 단계별로 안내합니다:
 
-1. **아키텍처 제안** — 서비스 구성 초안 + 인터랙티브 다이어그램 제시
-2. **대화로 확정** — 서비스, SKU, 네트워킹 방식 조정
-3. **Bicep 생성** — 배포 가능한 IaC 코드 자동 작성
-4. **코드 리뷰** — 보안/완전성/모범사례 자동 검토 및 수정
-5. **Azure 배포** — what-if 확인 후 실제 배포
+1. **요구사항 수집** — 필요한 정보를 질문하여 아키텍처 구성 확정
+2. **다이어그램 생성** — 인터랙티브 HTML 아키텍처 다이어그램 제시
+3. **대화로 조정** — 서비스, SKU, 네트워킹 방식 수정 반영
+4. **Bicep 생성** — MS Docs에서 최신 API 버전 확인 후 IaC 코드 자동 작성
+5. **코드 리뷰** — 보안/완전성/모범사례 자동 검토 및 수정
+6. **Azure 배포** — What-if 검증 → 확정 다이어그램 재생성 → 실제 배포
 
 ---
 
-## 지원 시나리오
+## 특징
 
-| 시나리오 | 서비스 조합 |
-|---------|-----------|
-| RAG 챗봇 | Azure OpenAI + AI Search + ADLS Gen2 + Key Vault |
-| Microsoft Foundry | Microsoft Foundry Hub + Microsoft Foundry Project + Azure OpenAI Service + Azure AI Search + Azure Data Lake Storage Gen2 |
-| Data Lakehouse | Microsoft Fabric + ADLS Gen2 + ADF |
-| ML Platform | Azure ML + ADLS Gen2 + Key Vault + ACR |
+- **최신 정보 기반**: API 버전, 서비스 명칭, 속성 등을 MS Docs에서 실시간 확인하여 적용
+- **보안 우선**: Private Endpoint, 민감 정보 파일 저장 금지 등 보안 원칙 내장
+- **대화형 설계**: 사용자와 대화하며 점진적으로 아키텍처 확정
+- **단계별 승인**: 모든 주요 단계에서 사용자 확인 후 진행
 
-모든 구성에 **Private Endpoint + Private DNS Zone** 자동 적용.
+---
+
+## 지원 서비스
+
+Azure AI/Data 관련 서비스를 자유롭게 조합할 수 있습니다. 서비스별 상세 정보는 `references/ai-data-services.md`를 참조합니다.
+
+모든 구성에 **Private Endpoint + Private DNS Zone** 자동 적용 가능.
 
 ---
 
