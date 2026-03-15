@@ -81,7 +81,11 @@ Claude 질문 예시:
 `generate_html_diagram.py`를 실행하여 인터랙티브 HTML 다이어그램을 만든다.
 스크립트 경로는 설치 위치에 따라 다르므로 아래처럼 동적으로 찾는다.
 
-**중요: `--output`은 반드시 `archi_diagram.html`로 고정한다. 절대 다른 이름을 사용하지 않는다.**
+**다이어그램 파일명 규칙:**
+- 설계 단계 초안: `archi_diagram_draft.html`
+- What-if 기반 확정본 (Phase 4): `archi_diagram.html`
+
+초안은 덮어쓰지 않고 유지하여 언제든 다시 볼 수 있도록 한다.
 
 **스크립트 경로 탐색 — 아래 순서로 찾는다:**
 ```bash
@@ -357,12 +361,14 @@ az deployment group what-if \
 ### 단계 3: What-if 결과 기반 다이어그램 재생성
 
 What-if가 성공하면, 실제 배포 예정 리소스 목록(리소스명, 타입, 위치, 수량)으로 다이어그램을 재생성한다.
-Phase 1에서 그린 다이어그램은 설계 단계의 초안이었고, 이 다이어그램이 실제 배포 확정본이다.
+Phase 1에서 그린 초안(`archi_diagram_draft.html`)은 그대로 두고, 확정본을 `archi_diagram.html`로 생성한다.
+초안은 언제든 다시 열어볼 수 있다.
 
 ```
 ## 배포 예정 아키텍처 (What-if 기반)
 
-[인터랙티브 다이어그램 링크 — what-if 결과 반영]
+[인터랙티브 다이어그램 링크 — archi_diagram.html]
+(초안 다이어그램: archi_diagram_draft.html)
 
 생성될 리소스 (N개):
 [What-if 결과 요약 테이블]
