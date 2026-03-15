@@ -45,9 +45,13 @@ Microsoft Foundry resource (accounts)
 - `kind: 'AIServices'` — Foundry임을 나타내는 핵심 값. `'OpenAI'`와 혼동 금지
 - `publicNetworkAccess: 'Disabled'` — Private Endpoint 사용 시 필수
 
-### 레거시 주의
-- **Azure OpenAI (`kind: 'OpenAI'`)**: 레거시. Foundry(`kind: 'AIServices'`)의 서브셋. 신규 개발에 사용 금지
-- **Hub 기반 (`Microsoft.MachineLearningServices/workspaces`)**: 레거시. ML/오픈소스 모델, Serverless API, Managed compute가 명시적으로 필요한 경우에만 사용. 일반 AI/RAG 구성에는 Microsoft Foundry(AIServices) 사용
+### 리소스 kind 선택 기준
+- **`kind: 'AIServices'` (Microsoft Foundry)**: 권장. 모델 배포 + 프로젝트 관리 + AI Search 연결 등 통합 기능 제공
+- **`kind: 'OpenAI'` (Azure OpenAI)**: 여전히 지원되는 배포 대상. 사용자가 명시적으로 Azure OpenAI resource를 요청한 경우 사용 가능. 단, Foundry Project 등 통합 기능은 사용 불가
+- **Hub 기반 (`Microsoft.MachineLearningServices/workspaces`)**: ML/오픈소스 모델, Serverless API, Managed compute가 명시적으로 필요한 경우에만 사용
+
+> 사용자가 특별히 지정하지 않으면 `kind: 'AIServices'`를 기본으로 안내하되, Azure OpenAI resource 요청을 Foundry로 강제 전환하지 않는다.
+> 최신 배포 옵션은 MS Docs 확인: https://learn.microsoft.com/en-us/azure/ai-services/openai/how-to/create-resource
 
 ### Bicep 구조 요약
 ```bicep
@@ -92,18 +96,19 @@ resource modelDeployment 'Microsoft.CognitiveServices/accounts/deployments@<fetc
 
 ### 핵심 속성 (빠뜨리면 안 되는 것들)
 - `publicNetworkAccess: 'disabled'` — Private Endpoint 사용 시 필수
-- `semanticSearch: 'free'` — Semantic Ranking 활성화 (standard 이상 SKU에서 사용 가능)
+- `semanticSearch` — Semantic Ranker 설정: `disabled` / `free` / `standard` (사용자 요구에 따라 선택)
 - `sku.name` — SKU 선택: `free` / `basic` / `standard` / `standard2` / `standard3`
 
 ### SKU 선택 기준
 | SKU | 용도 |
 |-----|------|
 | free | 개발/테스트 (인덱스 3개, 50MB 제한) |
-| basic | 소규모 프로덕션 |
-| standard | 일반 프로덕션 (Semantic Ranking 지원) |
+| basic | 소규모 프로덕션 (Semantic Ranker 지원) |
+| standard | 일반 프로덕션 |
 | standard2/3 | 대규모 프로덕션 |
 
 > Private Endpoint는 basic 이상 SKU에서 지원
+> Semantic Ranker는 basic 이상 SKU에서 사용 가능. 최신 조건은 MS Docs 확인: https://learn.microsoft.com/en-us/azure/search/semantic-how-to-enable-disable
 
 ### Bicep 구조 요약
 ```bicep
@@ -112,7 +117,7 @@ resource searchService 'Microsoft.Search/searchServices@<fetch로 확인>' = {
   sku: { name: '<사용자 확정 SKU>' }  // 위 SKU 선택 기준 참조
   properties: {
     publicNetworkAccess: 'disabled'
-    semanticSearch: 'free'
+    semanticSearch: '<사용자 확정: disabled | free | standard>'
     ...
   }
 }

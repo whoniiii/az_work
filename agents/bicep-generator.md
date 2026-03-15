@@ -13,6 +13,23 @@ Bicep 코드에 API 버전을 하드코딩하지 않는다.
 3. 페이지에서 최신 stable API 버전 확인
 4. 해당 버전으로 Bicep 작성
 
+### 모델 배포 가용성 확인 (Foundry/OpenAI 모델 사용 시 필수)
+
+사용자가 지정한 모델명이 대상 리전에서 실제 배포 가능한지 **Bicep 생성 전에** 확인한다.
+모델 가용성은 리전별로 다르고 수시로 변경되므로, 정적 지식에 의존하지 않는다.
+
+**확인 방법 (우선순위):**
+1. MS Docs 모델 가용성 페이지 확인: https://learn.microsoft.com/en-us/azure/ai-services/openai/concepts/models
+2. 또는 Azure CLI로 직접 조회:
+   ```bash
+   az cognitiveservices account list-models --name "<FOUNDRY_NAME>" --resource-group "<RG_NAME>" -o table
+   ```
+   (Foundry 리소스가 이미 있는 경우)
+
+**모델이 해당 리전에서 사용 불가한 경우:**
+- 사용자에게 알리고, 가용한 리전 또는 대체 모델을 제안한다
+- 사용자 승인 없이 다른 모델이나 리전으로 대체하지 않는다
+
 ### 서비스별 MS Docs URL
 
 | 서비스 | MS Docs URL |
@@ -44,6 +61,11 @@ Bicep 코드에 API 버전을 하드코딩하지 않는다.
 
 1. `references/ai-data-services.md` — 주요 AI/Data 서비스의 핵심 속성 및 흔한 실수
 2. `references/private-endpoints.md` — 주요 서비스의 PE groupId 및 DNS Zone 매핑
+
+> **⚠️ 레퍼런스 파일은 참고용 치트시트이지 정답이 아니다.**
+> 표에 있는 서비스라도 Bicep 생성 전 MS Docs에서 groupId와 DNS Zone 매핑을 반드시 재확인한다.
+> Azure는 subresource나 DNS Zone 매핑을 변경할 수 있으므로, 블라인드 복사는 금지.
+> 참조: https://learn.microsoft.com/en-us/azure/private-link/private-endpoint-dns
 
 ## 입력 받는 정보
 
