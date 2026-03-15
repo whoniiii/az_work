@@ -356,7 +356,10 @@ peNodes.forEach(pe => {{
 
 // Dragging state
 let dragging = null, dragOffX = 0, dragOffY = 0;
+
+// Pan & Zoom state
 let viewTransform = {{ x: 0, y: 0, scale: 1 }};
+let isPanning = false, panStartX = 0, panStartY = 0, panStartTx = 0, panStartTy = 0;
 
 function getMarkerForType(type) {{
   if (type === 'data') return 'arrow-data';
@@ -559,12 +562,21 @@ document.getElementById('canvas').addEventListener('mousemove', e => {{
   positions[dragging].y = svgPt.y - dragOffY;
   renderDiagram();
 }});
-document.addEventListener('mouseup', () => {{ dragging = null; }});
+document.addEventListener('mouseup', () => {{
+  dragging = null;
+}});
 
-// Zoom
+// ── Pan & Zoom ──
+function applyTransform() {{
+  const root = document.getElementById('diagram-root');
+  root.setAttribute('transform', `translate(${{viewTransform.x}},${{viewTransform.y}}) scale(${{viewTransform.scale}})`);
+}}
+
 function fitToScreen() {{
   const svg = document.getElementById('canvas');
   const root = document.getElementById('diagram-root');
+  // 임시로 변환 제거하여 원본 bbox 계산
+  root.setAttribute('transform', '');
   const bbox = root.getBBox();
   if (!bbox.width || !bbox.height) return;
   const w = svg.clientWidth || svg.getBoundingClientRect().width;
@@ -574,22 +586,70 @@ function fitToScreen() {{
   const scaleY = (h - 100) / bbox.height;
   const scale = Math.min(scaleX, scaleY, 1.5);
   if (scale <= 0) return;
-  const tx = (svg.clientWidth - bbox.width * scale) / 2 - bbox.x * scale;
-  const ty = (svg.clientHeight - bbox.height * scale) / 2 - bbox.y * scale;
-  root.setAttribute('transform', `translate(${{tx}},${{ty}}) scale(${{scale}})`);
+  viewTransform.scale = scale;
+  viewTransform.x = (w - bbox.width * scale) / 2 - bbox.x * scale;
+  viewTransform.y = (h - bbox.height * scale) / 2 - bbox.y * scale;
+  applyTransform();
 }}
-function zoomIn() {{ applyZoom(1.2); }}
-function zoomOut() {{ applyZoom(0.8); }}
-function resetZoom() {{ document.getElementById('diagram-root').setAttribute('transform', ''); }}
-function applyZoom(factor) {{
-  const root = document.getElementById('diagram-root');
-  const transform = root.getAttribute('transform') || '';
-  const match = transform.match(/scale\\(([^)]+)\\)/);
-  const currentScale = match ? parseFloat(match[1]) : 1;
-  const newScale = currentScale * factor;
-  const newTransform = transform.replace(/scale\\([^)]+\\)/, '').trim() + ` scale(${{newScale}})`;
-  root.setAttribute('transform', newTransform.trim());
+
+function zoomIn() {{
+  viewTransform.scale *= 1.25;
+  applyTransform();
 }}
+function zoomOut() {{
+  viewTransform.scale *= 0.8;
+  applyTransform();
+}}
+function resetZoom() {{
+  viewTransform = {{ x: 0, y: 0, scale: 1 }};
+  applyTransform();
+}}
+
+// 마우스 휠로 줌
+document.getElementById('canvas').addEventListener('wheel', e => {{
+  e.preventDefault();
+  const factor = e.deltaY < 0 ? 1.1 : 0.9;
+  // 마우스 위치 기준으로 줌
+  const svg = document.getElementById('canvas');
+  const rect = svg.getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
+  const oldScale = viewTransform.scale;
+  const newScale = oldScale * factor;
+  // 마우스 위치를 기준점으로 유지
+  viewTransform.x = mx - (mx - viewTransform.x) * (newScale / oldScale);
+  viewTransform.y = my - (my - viewTransform.y) * (newScale / oldScale);
+  viewTransform.scale = newScale;
+  applyTransform();
+}}, {{ passive: false }});
+
+// 빈 공간 드래그로 캔버스 이동 (pan)
+document.getElementById('canvas').addEventListener('mousedown', e => {{
+  // 노드 위가 아닌 빈 공간 클릭 시에만 pan
+  if (e.target.closest('.node')) return;
+  isPanning = true;
+  panStartX = e.clientX;
+  panStartY = e.clientY;
+  panStartTx = viewTransform.x;
+  panStartTy = viewTransform.y;
+  document.getElementById('canvas').style.cursor = 'grabbing';
+  e.preventDefault();
+}});
+
+document.addEventListener('mousemove', e => {{
+  if (isPanning) {{
+    viewTransform.x = panStartTx + (e.clientX - panStartX);
+    viewTransform.y = panStartTy + (e.clientY - panStartY);
+    applyTransform();
+  }}
+}});
+
+document.addEventListener('mouseup', () => {{
+  if (isPanning) {{
+    isPanning = false;
+    document.getElementById('canvas').style.cursor = '';
+  }}
+}});
 
 // Build sidebar
 function buildSidebar() {{
