@@ -352,21 +352,24 @@ az deployment group what-if \
   --template-file main.bicep \
   --parameters main.bicepparam
 ```
-→ What-if 결과를 요약해서 사용자에게 보여준다:
+→ What-if 결과를 요약해서 사용자에게 보여준다.
+
+### 단계 3: What-if 결과 기반 다이어그램 재생성
+
+What-if가 성공하면, 실제 배포 예정 리소스 목록(리소스명, 타입, 위치, 수량)으로 다이어그램을 재생성한다.
+Phase 1에서 그린 다이어그램은 설계 단계의 초안이었고, 이 다이어그램이 실제 배포 확정본이다.
+
 ```
-## 배포 예정 리소스 (What-if 결과)
+## 배포 예정 아키텍처 (What-if 기반)
 
-생성될 리소스 (12개):
-+ Microsoft.Network/virtualNetworks: vnet-prod-krc
-+ Microsoft.CognitiveServices/accounts: oai-xxxx
-+ Microsoft.Search/searchServices: srch-xxxx
-...
+[인터랙티브 다이어그램 링크 — what-if 결과 반영]
 
-예상 배포 시간: 약 15-20분
-이 리소스들을 생성할까요? (예/아니오)
+생성될 리소스 (N개):
+[What-if 결과 요약 테이블]
+
+이 리소스들을 배포할까요? (예/아니오)
 ```
 
-### 단계 3: 실제 배포
 사용자가 확인하면:
 ```bash
 az deployment group create \
@@ -386,7 +389,7 @@ az deployment group show \
   -o table
 ```
 
-### 단계 4: 배포 완료 보고
+### 단계 5: 배포 완료 보고
 ```
 ## 배포 완료! 🎉
 
