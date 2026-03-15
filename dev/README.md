@@ -32,8 +32,7 @@ az_work/
 │   └── bicep-reviewer.md             # Phase 3: 코드 리뷰 에이전트
 ├── references/
 │   ├── ai-data-services.md           # Azure AI/Data 서비스 Bicep 스니펫
-│   ├── private-endpoints.md          # Private Endpoint + DNS Zone 패턴
-│   └── diagram-guide.md              # 다이어그램 생성 가이드
+│   └── private-endpoints.md          # Private Endpoint + DNS Zone 패턴
 └── scripts/
     └── generate_html_diagram.py      # 인터랙티브 HTML 다이어그램 생성기
 ```
@@ -51,12 +50,13 @@ az_work/
 2. `Microsoft.Network/privateDnsZones` + VNet Link (`registrationEnabled: false`)
 3. `Microsoft.Network/privateEndpoints/privateDnsZoneGroups`
 
-### AI Foundry
-- Hub: `kind: 'Hub'`, Project: `kind: 'Project'` — 반대로 하면 배포 실패
-- Managed Network: `AllowOnlyApprovedOutbound` 설정 시 outbound rules 별도 정의 필요
+### Microsoft Foundry
+- Foundry resource: `kind: 'AIServices'` + `allowProjectManagement: true`
+- Foundry Project (`accounts/projects`) 반드시 함께 생성 — 없으면 포털 사용 불가
+- 레거시 Hub 기반(`MachineLearningServices`)은 ML 전용
 
-### OpenAI 배포 위치
-`koreacentral`은 Azure OpenAI 미지원 → `eastus` 또는 `swedencentral` 사용.
+### 서비스 지역 가용성
+서비스별 지역 지원은 수시로 변경된다. 지역을 하드코딩하지 말고 MS Docs에서 확인할 것.
 
 ---
 
@@ -66,9 +66,9 @@ az_work/
 
 | ID | 시나리오 | 핵심 검증 포인트 |
 |----|---------|----------------|
-| 1 | RAG 챗봇 (OpenAI + Search + ADLS + KV) | PE 4종, isHnsEnabled |
-| 2 | Microsoft Fabric 데이터 플랫폼 | Fabric F4, ADLS HNS, ADF |
-| 3 | AI Foundry Hub 완전 private 구성 | kind:Hub/Project, Managed Network |
+| 1 | RAG 챗봇 (Foundry + Search + ADLS + KV) | PE 3종 세트, isHnsEnabled, Foundry Project |
+| 2 | 데이터 플랫폼 (Fabric + ADLS + ADF) | Fabric Capacity, ADLS HNS |
+| 3 | Microsoft Foundry 완전 private 구성 | Foundry + Project, PE, DNS Zone |
 
 현재 eval 결과: with_skill 100% / without_skill 95%
 차별점: `isHnsEnabled` 자동 적용, 다이어그램 일관성

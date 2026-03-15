@@ -58,6 +58,9 @@ resource privateDnsZoneGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneG
 
 ## 서비스별 groupId & Private DNS Zone
 
+> **⚠️ 이 표는 참고용 치트시트다.** Azure는 subresource나 DNS Zone 매핑을 변경할 수 있으므로, Bicep 생성 전 반드시 MS Docs에서 해당 서비스의 PE 지원 현황을 확인한다.
+> 참조: https://learn.microsoft.com/en-us/azure/private-link/private-endpoint-dns
+
 | 서비스 | groupId | Private DNS Zone |
 |--------|---------|-----------------|
 | Azure OpenAI / Cognitive Services | `account` | `privatelink.cognitiveservices.azure.com` |

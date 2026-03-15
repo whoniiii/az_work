@@ -3,20 +3,20 @@
   "evals": [
     {
       "id": 1,
-      "prompt": "고객사가 사내 문서 기반 RAG 챗봇을 만들고 싶어해. Azure OpenAI gpt-4o랑 text-embedding-3-large, AI Search를 써서 구성하고, ADLS Gen2에 문서 저장하고, Key Vault로 키 관리하는 구조야. 모든 서비스는 private endpoint로 연결해야 하고, VNet 안에 있어야 해. 리소스 그룹 이름은 rg-rag-prod, location은 koreacentral이야. Bicep 템플릿이랑 아키텍처 다이어그램 만들어줘.",
-      "expected_output": "main.bicep + modules (network, ai, storage, private-endpoints), main.bicepparam, 아키텍처 HTML 다이어그램, Azure CLI 배포 명령어. Private Endpoint는 OpenAI(account), AI Search(searchService), ADLS(dfs+blob), Key Vault(vault) 모두 포함되어야 함.",
+      "prompt": "사내 문서 기반 RAG 챗봇을 만들고 싶어. Microsoft Foundry에 채팅 모델이랑 임베딩 모델 배포하고, AI Search로 검색하고, ADLS Gen2에 문서 저장, Key Vault로 키 관리하는 구조야. 모든 서비스 private endpoint로 연결해줘. Bicep이랑 아키텍처 다이어그램 만들어줘.",
+      "expected_output": "main.bicep + modules, main.bicepparam, 아키텍처 HTML 다이어그램. Foundry resource + Foundry Project 반드시 포함. PE 3종 세트 (PE + DNS Zone + VNet Link + DNS Zone Group). ADLS Gen2 isHnsEnabled: true. 프로젝트 이름, 위치, SKU를 사용자에게 먼저 확인.",
       "files": []
     },
     {
       "id": 2,
-      "prompt": "Microsoft Fabric 기반 데이터 플랫폼 구축해야 해. Fabric Capacity는 F4 SKU로, ADLS Gen2를 OneLake 백엔드로 쓰고, ADF로 온프레미스 데이터 수집하는 구조야. 나중에 AI Search 붙여서 Fabric 데이터 검색도 하고 싶어. private endpoint 설정 포함해서 Bicep이랑 다이어그램 만들어줘. 어드민 이메일은 admin@contoso.com이야.",
-      "expected_output": "Fabric Capacity(F4) Bicep, ADLS Gen2 with HNS, ADF 리소스, AI Search 포함. admin 이메일 파라미터 처리. 아키텍처 다이어그램에 데이터 흐름(수집→저장→검색) 표현.",
+      "prompt": "데이터 플랫폼을 만들어야 해. Fabric Capacity로 분석하고, ADLS Gen2를 저장소로 쓰고, ADF로 온프레미스 데이터 수집하는 구조야. private endpoint 포함해서 Bicep이랑 다이어그램 만들어줘.",
+      "expected_output": "Fabric Capacity Bicep (SKU는 사용자 확인), ADLS Gen2 with HNS, ADF 리소스. admin 이메일 파라미터 처리. 프로젝트 이름, 위치, SKU를 사용자에게 먼저 확인.",
       "files": []
     },
     {
       "id": 3,
-      "prompt": "Azure AI Foundry Hub 설정하고 싶어. Hub에 Azure OpenAI랑 AI Search 연결하고, 프로젝트도 하나 만들어줘. 스토리지는 ADLS Gen2 쓰고, Key Vault랑 Application Insights도 붙여. 완전 private 구성으로, managed network AllowOnlyApprovedOutbound 설정까지 해줘. 다이어그램도 필요해.",
-      "expected_output": "AI Hub(kind:Hub) + AI Project(kind:Project) Bicep, OpenAI + AI Search 연결(connections), Managed Network outbound rules, ADLS + KV + AppInsights 포함. Private Endpoint + Managed Network 이중 격리 구성.",
+      "prompt": "Microsoft Foundry를 완전 private으로 구성하고 싶어. AI Search 연결하고, 프로젝트도 만들어줘. 스토리지는 ADLS Gen2, Key Vault도 필요해. 다이어그램도 만들어줘.",
+      "expected_output": "Foundry resource (kind: AIServices) + Foundry Project (accounts/projects) 반드시 포함. AI Search 연결. PE + DNS Zone 전체 구성. 프로젝트 이름, 위치, SKU를 사용자에게 먼저 확인.",
       "files": []
     }
   ]
