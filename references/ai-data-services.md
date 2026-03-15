@@ -35,6 +35,7 @@ Microsoft Foundry resource
 - 모델 배포: `Microsoft.CognitiveServices/accounts/deployments`
 
 ### 핵심 속성 (빠뜨리면 안 되는 것들)
+- `identity: { type: 'SystemAssigned' }` — **필수. 없으면 accounts/projects 생성 실패**
 - `allowProjectManagement: true` — **없으면 Foundry Project 생성 불가**
 - `customSubDomainName` — **필수** (엔드포인트 도메인 결정)
 - `kind: 'AIServices'` — Foundry임을 나타내는 핵심 값. `'OpenAI'`와 혼동 금지
@@ -49,6 +50,9 @@ Microsoft Foundry resource
 // apiVersion은 MS Docs fetch 후 확인
 resource foundry 'Microsoft.CognitiveServices/accounts@<fetch로 확인>' = {
   kind: 'AIServices'
+  identity: {
+    type: 'SystemAssigned'         // 필수 — 없으면 배포 실패
+  }
   properties: {
     allowProjectManagement: true   // Foundry Project 생성 활성화 필수
     customSubDomainName: foundryName
