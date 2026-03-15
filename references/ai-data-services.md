@@ -1,6 +1,7 @@
 # Azure AI/Data 서비스 레퍼런스
 
-> **이 파일의 목적**: 각 서비스의 개념, 리소스 타입, 핵심 속성을 정의한다.
+> **이 파일의 목적**: 자주 사용되는 AI/Data 서비스의 핵심 속성과 흔한 실수를 정리한 치트시트.
+> **이 파일에 없는 서비스도 지원한다.** 없는 서비스는 MS Docs를 직접 확인하여 Bicep을 작성한다.
 > API 버전은 하드코딩하지 않는다. Bicep 생성 전 반드시 MS Docs URL을 fetch하여 최신 stable apiVersion을 확인할 것.
 > (`agents/bicep-generator.md` Step 0 참조)
 

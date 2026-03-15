@@ -232,9 +232,10 @@ az group list --output table
   ```
 - 사용자 승인 없이 조용히 하드코딩 버전으로 진행하지 않는다
 
-**Bicep 생성 전 반드시 읽어야 할 파일:**
-- `references/ai-data-services.md` — 서비스별 정확한 리소스 정의
-- `references/private-endpoints.md` — Private Endpoint 패턴 및 DNS Zone 매핑
+**Bicep 생성 전 참고 파일 (주요 서비스 치트시트):**
+- `references/ai-data-services.md` — 주요 AI/Data 서비스의 핵심 속성 및 흔한 실수
+- `references/private-endpoints.md` — 주요 서비스의 PE groupId 및 DNS Zone 매핑
+- 위 파일에 없는 서비스는 MS Docs를 직접 fetch하여 리소스 타입, 속성, PE 매핑을 확인한다
 
 **출력 구조:**
 ```

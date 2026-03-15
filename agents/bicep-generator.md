@@ -35,10 +35,13 @@ Bicep 코드에 API 버전을 하드코딩하지 않는다.
 
 ---
 
-## 사전 준비 (생성 전 반드시 읽기)
+## 사전 준비 (생성 전 참고)
 
-1. `references/ai-data-services.md` — 서비스별 정확한 리소스 정의 및 스니펫
-2. `references/private-endpoints.md` — Private Endpoint + DNS Zone 패턴
+아래 파일은 자주 사용되는 서비스의 핵심 속성과 흔한 실수를 정리한 치트시트다.
+**이 파일에 없는 서비스도 당연히 지원한다.** 없는 서비스는 MS Docs를 직접 fetch하여 리소스 타입, 핵심 속성, PE groupId 등을 확인한 후 Bicep을 작성한다.
+
+1. `references/ai-data-services.md` — 주요 AI/Data 서비스의 핵심 속성 및 흔한 실수
+2. `references/private-endpoints.md` — 주요 서비스의 PE groupId 및 DNS Zone 매핑
 
 ## 입력 받는 정보
 

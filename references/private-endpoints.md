@@ -1,7 +1,8 @@
 # Azure Private Endpoint 패턴
 
-> **API 버전 주의**: 이 파일의 Bicep 스니펫에서 `@<fetch로 확인>` 표시된 자리는 하드코딩된 버전을 쓰지 않는다.
-> Bicep 생성 전 반드시 MS Docs를 fetch하여 최신 stable apiVersion을 확인할 것.
+> **이 파일의 범위**: 자주 사용되는 서비스의 PE groupId 및 DNS Zone 매핑을 정리한 치트시트.
+> **이 파일에 없는 서비스도 PE를 만들 수 있다.** 없는 서비스는 MS Docs에서 해당 서비스의 PE groupId와 DNS Zone을 확인한다.
+> API 버전은 하드코딩하지 않는다. Bicep 생성 전 반드시 MS Docs를 fetch하여 최신 stable apiVersion을 확인할 것.
 > - Private Endpoints: https://learn.microsoft.com/en-us/azure/templates/microsoft.network/privateendpoints
 > - Private DNS Zones: https://learn.microsoft.com/en-us/azure/templates/microsoft.network/privatednszones
 
