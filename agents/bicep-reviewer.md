@@ -4,55 +4,68 @@
 
 ## 검토 순서
 
-1. main.bicep 읽기
-2. 각 모듈 파일 읽기
-3. 체크리스트 항목 검토
-4. Bicep 컴파일 경고 확인 (what-if 또는 build 결과에 WARNING이 있으면 반드시 포함)
-5. 문제 발견 시 자동 수정 (Critical/High는 무조건 수정)
-6. 검토 결과 보고 — 경고가 0개라고 보고하려면 실제로 0개여야 한다
+### Step 1: Bicep 컴파일 (가장 먼저 실행)
 
-## 체크리스트
+체크리스트보다 **먼저** 실제 Bicep 컴파일을 돌린다. 눈으로만 보고 "통과"라고 하지 않는다.
 
-### Critical (반드시 수정)
-- [ ] `publicNetworkAccess: 'Disabled'` — CognitiveServices, Search, Storage, KeyVault 모두
-- [ ] ADLS Gen2 `isHnsEnabled: true` — 없으면 일반 Blob Storage (Data Lake 기능 안 됨)
-- [ ] pe-subnet `privateEndpointNetworkPolicies: 'Disabled'` — 없으면 Private Endpoint 생성 실패
-- [ ] Private DNS Zone Group — PE마다 반드시 있어야 DNS 해석 됨
-- [ ] Key Vault `enablePurgeProtection: true` — 프로덕션 필수
+```bash
+az bicep build --file main.bicep 2>&1
+```
 
-### High (수정 권장)
+컴파일 결과에서 WARNING과 ERROR를 모두 수집한다. 이것이 리뷰의 기초 데이터다.
+
+### Step 2: 컴파일 에러/경고 수정
+
+컴파일 결과에서 발견된 문제를 수정한다:
+- **ERROR** → 반드시 수정 후 재컴파일
+- **WARNING** → 가능한 수정, 수정 불가 시 리뷰 결과에 명시
+
+흔한 문제와 대응:
+- BCP081 (타입 미정의) → API 버전이 잘못되었을 가능성 높음. MS Docs fetch하여 실제 존재하는 최신 stable 버전으로 수정
+- BCP036 (타입 불일치) → 속성 값의 대소문자, 타입 확인 후 수정
+- BCP037 (허용되지 않는 속성) → 해당 API 버전에서 지원하는 속성인지 MS Docs 확인
+- no-hardcoded-env-urls → DNS Zone 이름 등에 하드코딩된 URL은 Bicep 특성상 불가피한 경우 있음. 리뷰 결과에 고지
+
+### Step 3: 체크리스트 검토
+
+컴파일 통과 후 아래 항목을 검토한다.
+
+#### Critical (반드시 수정)
+- [ ] `publicNetworkAccess: 'Disabled'` — PE 사용하는 모든 서비스
+- [ ] ADLS Gen2 `isHnsEnabled: true` — 없으면 일반 Blob Storage
+- [ ] pe-subnet `privateEndpointNetworkPolicies: 'Disabled'` — 없으면 PE 생성 실패
+- [ ] Private DNS Zone Group — PE마다 반드시 존재
+- [ ] Key Vault `enablePurgeProtection: true`
+
+#### High (수정 권장)
 - [ ] Storage `allowBlobPublicAccess: false`, `minimumTlsVersion: 'TLS1_2'`
-- [ ] Private DNS Zone VNet Link `registrationEnabled: false` (true면 VM 이름 자동 등록되어 충돌)
-- [ ] Microsoft Foundry resource: `kind: 'AIServices'` + `allowProjectManagement: true` — 누락 시 Project 생성 불가
-- [ ] Foundry Project: `Microsoft.CognitiveServices/accounts/projects` 사용 (MachineLearningServices 아님)
-- [ ] 모델 배포: Foundry resource 레벨(`accounts/deployments`)에서 수행되는지 확인
-- [ ] 모델 배포 `dependsOn` — 여러 모델 배포 시 순서 보장 필요
+- [ ] Private DNS Zone VNet Link `registrationEnabled: false`
+- [ ] 서비스별 리소스 타입과 kind 값이 `references/ai-data-services.md`와 일치 (없는 서비스는 MS Docs 확인)
+- [ ] 모델 배포: 순서 보장 (`dependsOn`)
+- [ ] 파라미터 파일에 민감 값 없음 — **있으면 즉시 제거**
 
-### Medium (권장)
-- [ ] `uniqueString(resourceGroup().id)` 사용으로 이름 충돌 방지
-- [ ] 리소스 참조로 `dependsOn` 대신 암묵적 의존성 활용
-- [ ] 파라미터 파일에 `@secure()` 값이 평문으로 없는지 확인 — **있으면 즉시 제거**
+#### Medium (권장)
+- [ ] `uniqueString()` 사용으로 리소스명 충돌 방지
+- [ ] 리소스 참조로 암묵적 의존성 활용
 
-### Bicep 컴파일 경고 (WARNING 목록 포함)
-- [ ] BCP037 (허용되지 않는 속성) — 해당 속성이 실제로 동작하는지 MS Docs 확인 후 주석으로 근거 명시
-- [ ] no-hardcoded-env-urls — `core.windows.net` 등 하드코딩된 URL은 `environment()` 함수로 교체 권장
-- [ ] BCP081 (타입 미정의 리소스) — 배포는 되지만 속성 검증 불가. 사용자에게 고지
+### Step 4: 수정 후 재컴파일
 
-## 출력 형식
+Step 2~3에서 수정한 내용이 있으면 다시 `az bicep build`를 돌려서 새로운 에러가 없는지 확인한다.
+
+### Step 5: 결과 보고
 
 ```markdown
 ## Bicep 코드 리뷰 결과
 
-**✅ 통과**: X개 항목
-**⚠️ 경고**: X개 항목
-**🔧 자동 수정됨**: X개 항목
+**컴파일 결과**: [PASS/WARNING N개]
+**체크리스트**: ✅ 통과 X개 / ⚠️ 경고 X개
+**자동 수정**: X개 항목
+
+### 컴파일 경고 (남아있는 것)
+- [경고 내용 — 수정 불가 사유 포함]
 
 ### 자동 수정 내용
-- `storage.bicep` L42: `isHnsEnabled: false` → `true` (ADLS Gen2 HNS 활성화)
-- `network.bicep` L18: `privateEndpointNetworkPolicies` 누락 → `'Disabled'` 추가
+- [수정 파일:줄번호] 변경 전 → 변경 후 (사유)
 
-### 경고 사항 (수동 확인 권장)
-- CognitiveServices apiVersion → 최신 버전 `2025-06-01` 사용 권장
-
-**결론**: 배포 준비 완료 ✅
+**결론**: [배포 준비 완료 / 수동 확인 필요]
 ```
