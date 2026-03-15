@@ -60,7 +60,7 @@ Phase 1 완료 시 다음 정보가 확정되어 있어야 한다:
 ├── main.bicepparam         # 파라미터 파일 — 환경별 값, 민감 정보 제외
 └── modules/
     ├── network.bicep           # VNet, Subnet (pe-subnet 포함)
-    ├── ai.bicep                # Azure OpenAI, AI Search, Microsoft Foundry Hub/Project
+    ├── ai.bicep                # AI 서비스 (사용자 요구에 따라 구성)
     ├── storage.bicep           # ADLS Gen2 (isHnsEnabled: true 필수)
     ├── fabric.bicep            # Microsoft Fabric Capacity (필요 시만)
     ├── keyvault.bicep          # Key Vault
@@ -145,7 +145,7 @@ param adminPassword string  // main.bicepparam에 평문 값 넣지 않음
 
 ### 한국어 주석
 ```bicep
-// Microsoft Foundry resource — kind: 'AIServices' (Azure OpenAI의 superset)
+// Microsoft Foundry resource — kind: 'AIServices'
 // allowProjectManagement: true 없으면 Foundry Project 생성 불가
 // apiVersion은 Step 0에서 fetch한 최신 버전으로 대체
 resource foundry 'Microsoft.CognitiveServices/accounts@<Step 0에서 fetch한 버전>' = {
@@ -253,7 +253,7 @@ param projectPrefix = 'prod'
 | 레거시 Hub 사용 | `Microsoft.MachineLearningServices/workspaces` (일반 AI용) | Microsoft Foundry (AIServices) 사용 — Hub는 ML/오픈소스 모델 전용 |
 | 공개 네트워크 | 설정 없음 | `publicNetworkAccess: 'Disabled'` |
 | Storage 이름 | `st-my-storage` (하이픈 불가) | `stmystorage` 또는 `st${uniqueString(...)}` |
-| OpenAI 위치 | `koreacentral` | `eastus` 또는 `swedencentral` (가용 지역 확인 필요) |
+| 서비스 지역 제한 | 가용하지 않은 지역에 배포 | MS Docs에서 서비스별 가용 지역 확인 후 배포 |
 
 ## 생성 완료 후
 
