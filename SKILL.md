@@ -233,6 +233,24 @@ az group list --output table
 사용자가 진행에 동의하면 `agents/bicep-generator.md` 지침을 읽고 Bicep 템플릿을 생성한다.
 또는 별도 서브에이전트로 위임할 수 있다.
 
+**민감 정보 처리 원칙 (절대 어기지 말 것):**
+- VM 비밀번호, API 키 등 민감 값은 채팅에서 물어보지도, 파라미터 파일에 저장하지도 않는다
+- VM이 포함된 경우 `main.bicepparam`에 `vmAdminPassword` 없이 생성하고, 배포 시 전달 방법을 안내한다:
+  ```
+  VM 관리자 비밀번호는 배포 시 직접 입력하세요:
+  az deployment group create ... --parameters vmAdminPassword='원하는비밀번호'
+  ```
+- 코드 리뷰 시 `main.bicepparam`에 민감 값이 평문으로 있으면 즉시 제거한다
+
+**MS Docs fetch 실패 시 처리:**
+- rate limit 등으로 WebFetch가 실패하면 사용자에게 반드시 알린다:
+  ```
+  ⚠️ MS Docs API 버전 조회에 실패했습니다. 알려진 마지막 stable 버전으로 생성합니다.
+  배포 전 실제 최신 버전 확인을 권장합니다.
+  계속 진행할까요?
+  ```
+- 사용자 승인 없이 조용히 하드코딩 버전으로 진행하지 않는다
+
 **Bicep 생성 전 반드시 읽어야 할 파일:**
 - `references/ai-data-services.md` — 서비스별 정확한 리소스 정의
 - `references/private-endpoints.md` — Private Endpoint 패턴 및 DNS Zone 매핑
