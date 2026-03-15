@@ -31,6 +31,8 @@ az bicep build --file main.bicep 2>&1
 컴파일 통과 후 아래 항목을 검토한다.
 
 #### Critical (반드시 수정)
+- [ ] Microsoft Foundry 사용 시 **Foundry Project (`accounts/projects`) 반드시 존재** — 없으면 포털에서 사용 불가
+- [ ] Microsoft Foundry `identity: { type: 'SystemAssigned' }` — 없으면 Project 생성 실패
 - [ ] `publicNetworkAccess: 'Disabled'` — PE 사용하는 모든 서비스
 - [ ] ADLS Gen2 `isHnsEnabled: true` — 없으면 일반 Blob Storage
 - [ ] pe-subnet `privateEndpointNetworkPolicies: 'Disabled'` — 없으면 PE 생성 실패
