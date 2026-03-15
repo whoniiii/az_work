@@ -54,6 +54,17 @@ az bicep build --file main.bicep 2>&1
 
 Step 2~3에서 수정한 내용이 있으면 다시 `az bicep build`를 돌려서 새로운 에러가 없는지 확인한다.
 
+### `az bicep build`의 한계
+
+컴파일은 문법과 타입만 검증한다. 아래 항목은 컴파일로 잡을 수 없으므로, Phase 4의 `az deployment group what-if`에서 최종 검증된다:
+- retired/unavailable SKU
+- 지역별 서비스 가용성
+- 모델명 유효성
+- preview 전용 속성
+- 서비스 정책 변경 (quota, capacity 등)
+
+리뷰 결과에 이 한계를 명시하여 사용자가 what-if 단계의 중요성을 인지하도록 한다.
+
 ### Step 5: 결과 보고
 
 ```markdown

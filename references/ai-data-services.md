@@ -109,7 +109,7 @@ resource modelDeployment 'Microsoft.CognitiveServices/accounts/deployments@<fetc
 ```bicep
 // apiVersion은 MS Docs fetch 후 확인
 resource searchService 'Microsoft.Search/searchServices@<fetch로 확인>' = {
-  sku: { name: 'standard' }
+  sku: { name: '<사용자 확정 SKU>' }  // 위 SKU 선택 기준 참조
   properties: {
     publicNetworkAccess: 'disabled'
     semanticSearch: 'free'
@@ -145,7 +145,7 @@ resource searchService 'Microsoft.Search/searchServices@<fetch로 확인>' = {
 // apiVersion은 MS Docs fetch 후 확인
 resource fabricCapacity 'Microsoft.Fabric/capacities@<fetch로 확인>' = {
   sku: {
-    name: 'F4'
+    name: '<사용자 확정 SKU>'  // F2 / F4 / F8 / F16 / F32 / F64 등
     tier: 'Fabric'
   }
   properties: {
