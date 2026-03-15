@@ -5,10 +5,10 @@ Azure Interactive Architecture Diagram Generator
 
 사용법:
   python generate_html_diagram.py \
-    --services '[{"id":"openai","name":"Azure OpenAI","type":"openai","sku":"S0","private":true,"details":["gpt-4o"]}]' \
-    --connections '[{"from":"openai","to":"search","label":"벡터 검색","type":"api"}]' \
-    --title "RAG 아키텍처" \
-    --output "/path/to/architecture-draft.html"
+    --services '[{"id":"svc1","name":"서비스명","type":"타입","sku":"SKU","private":true,"details":["상세1"]}]' \
+    --connections '[{"from":"svc1","to":"svc2","label":"연결설명","type":"api"}]' \
+    --title "아키텍처 제목" \
+    --output "archi_diagram_draft.html"
 """
 
 import argparse
