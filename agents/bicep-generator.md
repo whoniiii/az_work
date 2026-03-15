@@ -80,9 +80,10 @@ Phase 1 완료 시 다음 정보가 확정되어 있어야 한다:
 
 ### `ai.bicep`
 - **Microsoft Foundry resource** (`Microsoft.CognitiveServices/accounts`, `kind: 'AIServices'`) — 최상위 AI 리소스
+  - `identity: { type: 'SystemAssigned' }` 필수
   - `allowProjectManagement: true` 필수
   - 모델 배포 (`Microsoft.CognitiveServices/accounts/deployments`) — Foundry resource 레벨에서 수행
-- **Foundry Project** (`Microsoft.CognitiveServices/accounts/projects`) — Foundry resource의 서브리소스
+- **⚠️ Foundry Project** (`Microsoft.CognitiveServices/accounts/projects`) — **Foundry resource를 만들면 반드시 함께 생성. 없으면 포털에서 사용 불가**
 - **Azure AI Search** — Semantic Ranking, 벡터 검색 설정
 - ⚠️ Hub 기반(`Microsoft.MachineLearningServices/workspaces`)은 ML/오픈소스 모델 필요 시에만 사용. 일반 AI/RAG 구성은 Microsoft Foundry (AIServices) 사용
 
@@ -252,7 +253,7 @@ param projectPrefix = 'prod'
 | PE 서브넷 정책 | 미설정 | `privateEndpointNetworkPolicies: 'Disabled'` |
 | DNS Zone Group | PE만 생성 | PE + DNS Zone + VNet Link + DNS Zone Group |
 | Microsoft Foundry resource | `kind: 'OpenAI'` 또는 MachineLearningServices 사용 | `kind: 'AIServices'` + `allowProjectManagement: true` |
-| Foundry Project 미생성 | `allowProjectManagement` 누락 | `allowProjectManagement: true` 필수 |
+| Foundry Project 미생성 | Foundry resource만 있고 Project 없음 | **Foundry resource + Project 반드시 세트로 생성** — 없으면 포털 사용 불가 |
 | 레거시 Hub 사용 | `Microsoft.MachineLearningServices/workspaces` (일반 AI용) | Microsoft Foundry (AIServices) 사용 — Hub는 ML/오픈소스 모델 전용 |
 | 공개 네트워크 | 설정 없음 | `publicNetworkAccess: 'Disabled'` |
 | Storage 이름 | `st-my-storage` (하이픈 불가) | `stmystorage` 또는 `st${uniqueString(...)}` |

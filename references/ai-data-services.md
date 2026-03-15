@@ -23,11 +23,15 @@ Azure AI 서비스의 최상위 리소스. 모델 배포, 프로젝트 관리, A
 
 ### 계층 구조
 ```
-Microsoft Foundry resource
-└── Foundry Project (accounts/projects)
-    └── Project assets (에이전트, 파일, 평가)
-모델 배포 (accounts/deployments) — Foundry resource 레벨, Project에서 공유 사용
+Microsoft Foundry resource (accounts)
+├── Foundry Project (accounts/projects)     ← 반드시 생성 — 없으면 포털에서 사용 불가
+│   └── Project assets (에이전트, 파일, 평가, RAG 파이프라인)
+└── 모델 배포 (accounts/deployments)        ← Foundry resource 레벨, Project에서 공유 사용
 ```
+
+> **⚠️ Foundry Project는 필수다.** Project가 없으면 AI Foundry 포털에서 모델 연결, AI Search 데이터 소스 연결, RAG 구성 등 실질적인 작업을 할 수 없다.
+> Microsoft Foundry resource를 만들면 **반드시 Foundry Project도 함께 생성**해야 한다.
+> 최신 구조는 MS Docs를 확인: https://learn.microsoft.com/en-us/azure/ai-foundry/
 
 ### 리소스 타입
 - Foundry resource: `Microsoft.CognitiveServices/accounts`, `kind: 'AIServices'`

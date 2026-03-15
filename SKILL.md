@@ -269,6 +269,7 @@ az group list --output table
 - Private 서비스는 반드시 `publicNetworkAccess: 'Disabled'`
 - pe-subnet에 `privateEndpointNetworkPolicies: 'Disabled'` 설정
 - Private DNS Zone + VNet Link + DNS Zone Group 3종 세트 필수
+- Microsoft Foundry 사용 시 **Foundry Project (`accounts/projects`) 반드시 함께 생성** — 없으면 포털 사용 불가
 - ADLS Gen2는 반드시 `isHnsEnabled: true` (빠트리면 일반 Blob Storage가 됨)
 - 비밀값은 Key Vault에 저장, `@secure()` 파라미터로 참조
 - 한국어 주석으로 각 섹션 목적 설명
