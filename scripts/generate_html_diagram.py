@@ -2,6 +2,7 @@
 """
 Azure Interactive Architecture Diagram Generator
 서비스 목록과 연결 관계를 받아 인터랙티브 HTML 다이어그램을 생성한다.
+Azure Well-Architected Framework 스타일 다이어그램.
 
 사용법:
   python generate_html_diagram.py \
@@ -16,44 +17,126 @@ import json
 import sys
 from datetime import datetime
 
-# Azure 서비스별 아이콘 이모지 및 색상
+# Azure 서비스별 아이콘 SVG, 색상
+# icon: 48x48 viewBox 기준 SVG path
 SERVICE_ICONS = {
-    "openai":       {"emoji": "🧠", "color": "#0078D4", "bg": "#E8F4FD", "category": "AI"},
-    "ai_foundry":   {"emoji": "🏭", "color": "#0078D4", "bg": "#E8F4FD", "category": "AI"},
-    "ai_hub":       {"emoji": "🏭", "color": "#0078D4", "bg": "#E8F4FD", "category": "AI"},
-    "search":       {"emoji": "🔍", "color": "#0078D4", "bg": "#E8F4FD", "category": "AI"},
-    "aml":          {"emoji": "⚗️",  "color": "#0078D4", "bg": "#E8F4FD", "category": "AI"},
-    "storage":      {"emoji": "🗄️",  "color": "#0F9D58", "bg": "#E8F8F0", "category": "Data"},
-    "adls":         {"emoji": "🏞️",  "color": "#0F9D58", "bg": "#E8F8F0", "category": "Data"},
-    "fabric":       {"emoji": "🧵",  "color": "#0F9D58", "bg": "#E8F8F0", "category": "Data"},
-    "synapse":      {"emoji": "⚡",  "color": "#0F9D58", "bg": "#E8F8F0", "category": "Data"},
-    "adf":          {"emoji": "🔄",  "color": "#0F9D58", "bg": "#E8F8F0", "category": "Data"},
-    "keyvault":     {"emoji": "🔐",  "color": "#E8A000", "bg": "#FEF7E0", "category": "Security"},
-    "kv":           {"emoji": "🔐",  "color": "#E8A000", "bg": "#FEF7E0", "category": "Security"},
-    "vnet":         {"emoji": "🌐",  "color": "#5C2D91", "bg": "#F3EEF9", "category": "Network"},
-    "pe":           {"emoji": "🔒",  "color": "#5C2D91", "bg": "#F3EEF9", "category": "Network"},
-    "nsg":          {"emoji": "🛡️",  "color": "#5C2D91", "bg": "#F3EEF9", "category": "Network"},
-    "acr":          {"emoji": "📦",  "color": "#0078D4", "bg": "#E8F4FD", "category": "Compute"},
-    "aks":          {"emoji": "☸️",  "color": "#0078D4", "bg": "#E8F4FD", "category": "Compute"},
-    "appservice":   {"emoji": "🖥️",  "color": "#0078D4", "bg": "#E8F4FD", "category": "Compute"},
-    "appinsights":  {"emoji": "📊",  "color": "#773ADC", "bg": "#F0EAFA", "category": "Monitor"},
-    "monitor":      {"emoji": "📈",  "color": "#773ADC", "bg": "#F0EAFA", "category": "Monitor"},
-    "vm":           {"emoji": "🖥️",  "color": "#0078D4", "bg": "#E8F4FD", "category": "Compute"},
-    "bastion":      {"emoji": "🛡️",  "color": "#5C2D91", "bg": "#F3EEF9", "category": "Network"},
-    "jumpbox":      {"emoji": "🛡️",  "color": "#5C2D91", "bg": "#F3EEF9", "category": "Network"},
-    "vpn":          {"emoji": "🔗",  "color": "#5C2D91", "bg": "#F3EEF9", "category": "Network"},
-    "adf":          {"emoji": "🔄",  "color": "#0F9D58", "bg": "#E8F8F0", "category": "Data"},
-    "user":         {"emoji": "👤",  "color": "#666666", "bg": "#F5F5F5", "category": "External"},
-    "app":          {"emoji": "💻",  "color": "#666666", "bg": "#F5F5F5", "category": "External"},
-    "default":      {"emoji": "☁️",  "color": "#0078D4", "bg": "#E8F4FD", "category": "Azure"},
+    "openai": {
+        "icon_svg": '<circle cx="24" cy="24" r="18" fill="#0078D4"/><text x="24" y="30" text-anchor="middle" font-size="18" fill="white" font-weight="700">AI</text>',
+        "color": "#0078D4", "bg": "#E8F4FD", "category": "AI"
+    },
+    "ai_foundry": {
+        "icon_svg": '<rect x="6" y="10" width="36" height="28" rx="4" fill="#0078D4"/><rect x="12" y="16" width="10" height="8" rx="2" fill="white" opacity="0.9"/><rect x="26" y="16" width="10" height="8" rx="2" fill="white" opacity="0.9"/><rect x="12" y="27" width="24" height="5" rx="2" fill="white" opacity="0.6"/>',
+        "color": "#0078D4", "bg": "#E8F4FD", "category": "AI"
+    },
+    "ai_hub": {
+        "icon_svg": '<rect x="6" y="10" width="36" height="28" rx="4" fill="#0078D4"/><circle cx="24" cy="24" r="8" fill="white" opacity="0.9"/><circle cx="24" cy="24" r="4" fill="#0078D4"/>',
+        "color": "#0078D4", "bg": "#E8F4FD", "category": "AI"
+    },
+    "search": {
+        "icon_svg": '<circle cx="20" cy="20" r="12" fill="none" stroke="#0078D4" stroke-width="3.5"/><line x1="29" y1="29" x2="40" y2="40" stroke="#0078D4" stroke-width="3.5" stroke-linecap="round"/><circle cx="20" cy="20" r="5" fill="#0078D4" opacity="0.3"/>',
+        "color": "#0078D4", "bg": "#E8F4FD", "category": "AI"
+    },
+    "aml": {
+        "icon_svg": '<rect x="6" y="8" width="36" height="32" rx="4" fill="#0078D4"/><path d="M14 32 L20 18 L26 26 L32 14" stroke="white" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>',
+        "color": "#0078D4", "bg": "#E8F4FD", "category": "AI"
+    },
+    "storage": {
+        "icon_svg": '<rect x="8" y="8" width="32" height="8" rx="3" fill="#0078D4"/><rect x="8" y="20" width="32" height="8" rx="3" fill="#0078D4" opacity="0.7"/><rect x="8" y="32" width="32" height="8" rx="3" fill="#0078D4" opacity="0.4"/>',
+        "color": "#0078D4", "bg": "#E8F4FD", "category": "Data"
+    },
+    "adls": {
+        "icon_svg": '<rect x="8" y="8" width="32" height="8" rx="3" fill="#0078D4"/><rect x="8" y="20" width="32" height="8" rx="3" fill="#0078D4" opacity="0.7"/><rect x="8" y="32" width="32" height="8" rx="3" fill="#0078D4" opacity="0.4"/>',
+        "color": "#0078D4", "bg": "#E8F4FD", "category": "Data"
+    },
+    "fabric": {
+        "icon_svg": '<polygon points="24,6 42,18 42,34 24,46 6,34 6,18" fill="#E8740C" opacity="0.9"/><text x="24" y="30" text-anchor="middle" font-size="14" fill="white" font-weight="700">F</text>',
+        "color": "#E8740C", "bg": "#FEF3E8", "category": "Data"
+    },
+    "synapse": {
+        "icon_svg": '<circle cx="24" cy="24" r="18" fill="#0078D4"/><path d="M15 24 L24 15 L33 24 L24 33 Z" fill="white" opacity="0.9"/>',
+        "color": "#0078D4", "bg": "#E8F4FD", "category": "Data"
+    },
+    "adf": {
+        "icon_svg": '<rect x="6" y="12" width="36" height="24" rx="4" fill="#0078D4"/><path d="M16 24 L28 24 M24 18 L30 24 L24 30" stroke="white" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>',
+        "color": "#0078D4", "bg": "#E8F4FD", "category": "Data"
+    },
+    "keyvault": {
+        "icon_svg": '<rect x="10" y="6" width="28" height="36" rx="4" fill="#E8A000"/><circle cx="24" cy="22" r="6" fill="white"/><rect x="22" y="26" width="4" height="10" rx="1" fill="white"/>',
+        "color": "#E8A000", "bg": "#FEF7E0", "category": "Security"
+    },
+    "kv": {
+        "icon_svg": '<rect x="10" y="6" width="28" height="36" rx="4" fill="#E8A000"/><circle cx="24" cy="22" r="6" fill="white"/><rect x="22" y="26" width="4" height="10" rx="1" fill="white"/>',
+        "color": "#E8A000", "bg": "#FEF7E0", "category": "Security"
+    },
+    "vnet": {
+        "icon_svg": '<rect x="6" y="6" width="36" height="36" rx="4" fill="none" stroke="#5C2D91" stroke-width="2.5"/><circle cx="16" cy="18" r="4" fill="#5C2D91"/><circle cx="32" cy="18" r="4" fill="#5C2D91"/><circle cx="24" cy="32" r="4" fill="#5C2D91"/><line x1="16" y1="18" x2="32" y2="18" stroke="#5C2D91" stroke-width="1.5"/><line x1="16" y1="18" x2="24" y2="32" stroke="#5C2D91" stroke-width="1.5"/><line x1="32" y1="18" x2="24" y2="32" stroke="#5C2D91" stroke-width="1.5"/>',
+        "color": "#5C2D91", "bg": "#F3EEF9", "category": "Network"
+    },
+    "pe": {
+        "icon_svg": '<circle cx="24" cy="24" r="14" fill="none" stroke="#5C2D91" stroke-width="2"/><circle cx="24" cy="24" r="6" fill="#5C2D91"/><line x1="24" y1="10" x2="24" y2="4" stroke="#5C2D91" stroke-width="2"/><line x1="24" y1="38" x2="24" y2="44" stroke="#5C2D91" stroke-width="2"/>',
+        "color": "#5C2D91", "bg": "#F3EEF9", "category": "Network"
+    },
+    "nsg": {
+        "icon_svg": '<rect x="8" y="8" width="32" height="32" rx="4" fill="#5C2D91"/><path d="M18 20 L24 14 L30 20 M18 28 L24 34 L30 28" stroke="white" stroke-width="2" fill="none"/>',
+        "color": "#5C2D91", "bg": "#F3EEF9", "category": "Network"
+    },
+    "acr": {
+        "icon_svg": '<rect x="8" y="10" width="32" height="28" rx="4" fill="#0078D4"/><rect x="14" y="16" width="20" height="16" rx="2" fill="white" opacity="0.3"/><text x="24" y="30" text-anchor="middle" font-size="12" fill="white" font-weight="600">ACR</text>',
+        "color": "#0078D4", "bg": "#E8F4FD", "category": "Compute"
+    },
+    "aks": {
+        "icon_svg": '<circle cx="24" cy="24" r="18" fill="#326CE5"/><text x="24" y="30" text-anchor="middle" font-size="16" fill="white" font-weight="700">K</text>',
+        "color": "#326CE5", "bg": "#EBF0FC", "category": "Compute"
+    },
+    "appservice": {
+        "icon_svg": '<rect x="8" y="8" width="32" height="32" rx="6" fill="#0078D4"/><polygon points="24,14 34,34 14,34" fill="white" opacity="0.9"/>',
+        "color": "#0078D4", "bg": "#E8F4FD", "category": "Compute"
+    },
+    "appinsights": {
+        "icon_svg": '<circle cx="24" cy="24" r="16" fill="#773ADC"/><path d="M16 28 L20 20 L24 24 L28 16 L32 22" stroke="white" stroke-width="2" fill="none" stroke-linecap="round"/>',
+        "color": "#773ADC", "bg": "#F0EAFA", "category": "Monitor"
+    },
+    "monitor": {
+        "icon_svg": '<rect x="6" y="10" width="36" height="24" rx="4" fill="#773ADC"/><path d="M14 28 L20 20 L26 24 L34 16" stroke="white" stroke-width="2" fill="none" stroke-linecap="round"/><rect x="14" y="36" width="20" height="3" rx="1" fill="#773ADC" opacity="0.5"/>',
+        "color": "#773ADC", "bg": "#F0EAFA", "category": "Monitor"
+    },
+    "vm": {
+        "icon_svg": '<rect x="6" y="8" width="36" height="26" rx="3" fill="#0078D4"/><rect x="10" y="12" width="28" height="18" rx="1" fill="white" opacity="0.2"/><rect x="16" y="36" width="16" height="4" rx="1" fill="#0078D4"/>',
+        "color": "#0078D4", "bg": "#E8F4FD", "category": "Compute"
+    },
+    "bastion": {
+        "icon_svg": '<rect x="8" y="6" width="32" height="36" rx="4" fill="#5C2D91"/><rect x="14" y="12" width="20" height="14" rx="2" fill="white" opacity="0.3"/><circle cx="24" cy="34" r="4" fill="white" opacity="0.7"/>',
+        "color": "#5C2D91", "bg": "#F3EEF9", "category": "Network"
+    },
+    "jumpbox": {
+        "icon_svg": '<rect x="8" y="8" width="32" height="32" rx="4" fill="#5C2D91"/><text x="24" y="30" text-anchor="middle" font-size="14" fill="white" font-weight="600">JB</text>',
+        "color": "#5C2D91", "bg": "#F3EEF9", "category": "Network"
+    },
+    "vpn": {
+        "icon_svg": '<rect x="6" y="12" width="36" height="24" rx="4" fill="#5C2D91"/><path d="M16 24 L24 16 L32 24 L24 32 Z" fill="white" opacity="0.8"/>',
+        "color": "#5C2D91", "bg": "#F3EEF9", "category": "Network"
+    },
+    "user": {
+        "icon_svg": '<circle cx="24" cy="16" r="8" fill="#0078D4"/><path d="M10 42 Q10 30 24 30 Q38 30 38 42" fill="#0078D4"/>',
+        "color": "#0078D4", "bg": "#E8F4FD", "category": "External"
+    },
+    "app": {
+        "icon_svg": '<rect x="8" y="6" width="32" height="36" rx="6" fill="#666"/><rect x="14" y="12" width="20" height="20" rx="2" fill="white" opacity="0.3"/><circle cx="24" cy="40" r="2" fill="white" opacity="0.7"/>',
+        "color": "#666666", "bg": "#F5F5F5", "category": "External"
+    },
+    "default": {
+        "icon_svg": '<circle cx="24" cy="24" r="16" fill="#0078D4"/><text x="24" y="30" text-anchor="middle" font-size="14" fill="white" font-weight="600">?</text>',
+        "color": "#0078D4", "bg": "#E8F4FD", "category": "Azure"
+    },
 }
 
 CONNECTION_STYLES = {
-    "api":      {"color": "#0078D4", "dash": "0",      "label_bg": "#E8F4FD"},
-    "data":     {"color": "#0F9D58", "dash": "0",      "label_bg": "#E8F8F0"},
-    "security": {"color": "#E8A000", "dash": "5,5",    "label_bg": "#FEF7E0"},
-    "network":  {"color": "#5C2D91", "dash": "5,5",    "label_bg": "#F3EEF9"},
-    "default":  {"color": "#666666", "dash": "0",      "label_bg": "#F5F5F5"},
+    "api":      {"color": "#0078D4", "dash": "0"},
+    "data":     {"color": "#0F9D58", "dash": "0"},
+    "security": {"color": "#E8A000", "dash": "5,5"},
+    "private":  {"color": "#5C2D91", "dash": "3,3"},
+    "network":  {"color": "#5C2D91", "dash": "5,5"},
+    "default":  {"color": "#999999", "dash": "0"},
 }
 
 
@@ -63,16 +146,6 @@ def get_service_info(svc_type: str) -> dict:
 
 
 def generate_html(services: list, connections: list, title: str) -> str:
-    # 서비스 카테고리별 그룹화
-    categories = {}
-    for svc in services:
-        info = get_service_info(svc.get("type", "default"))
-        cat = info["category"]
-        if cat not in categories:
-            categories[cat] = []
-        categories[cat].append(svc)
-
-    # 서비스 노드 JS 데이터
     nodes_js = json.dumps([{
         "id": svc["id"],
         "name": svc["name"],
@@ -80,7 +153,7 @@ def generate_html(services: list, connections: list, title: str) -> str:
         "sku": svc.get("sku", ""),
         "private": svc.get("private", True),
         "details": svc.get("details", []),
-        "icon": get_service_info(svc.get("type", "default"))["emoji"],
+        "icon_svg": get_service_info(svc.get("type", "default"))["icon_svg"],
         "color": get_service_info(svc.get("type", "default"))["color"],
         "bg": get_service_info(svc.get("type", "default"))["bg"],
         "category": get_service_info(svc.get("type", "default"))["category"],
@@ -95,7 +168,8 @@ def generate_html(services: list, connections: list, title: str) -> str:
         "dash": CONNECTION_STYLES.get(conn.get("type", "default"), CONNECTION_STYLES["default"])["dash"],
     } for conn in connections], ensure_ascii=False)
 
-    private_count = sum(1 for s in services if s.get("private", True))
+    pe_count = sum(1 for s in services if s.get("type", "default") == "pe")
+    svc_count = len(services) - pe_count
     generated_at = datetime.now().strftime("%Y-%m-%d %H:%M")
 
     html = f"""<!DOCTYPE html>
@@ -103,606 +177,784 @@ def generate_html(services: list, connections: list, title: str) -> str:
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>{title} — Azure Architecture</title>
+<title>{title}</title>
 <style>
+  @import url('https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;600;700&family=Inter:wght@400;500;600&display=swap');
   * {{ box-sizing: border-box; margin: 0; padding: 0; }}
-  body {{ font-family: 'Segoe UI', -apple-system, sans-serif; background: #f0f2f5; color: #1a1a1a; }}
+  body {{ font-family: 'Segoe UI', 'Inter', -apple-system, sans-serif; background: #f3f2f1; color: #323130; }}
 
   .header {{
-    background: linear-gradient(135deg, #0078D4 0%, #106EBE 100%);
-    color: white; padding: 20px 28px; display: flex; align-items: center; gap: 16px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    background: white; border-bottom: 1px solid #edebe9;
+    padding: 12px 24px; display: flex; align-items: center; gap: 14px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
   }}
-  .header h1 {{ font-size: 20px; font-weight: 600; }}
-  .header .meta {{ font-size: 13px; opacity: 0.8; margin-top: 3px; }}
-  .ms-logo {{ font-size: 28px; }}
-
-  .badges {{
-    display: flex; gap: 8px; margin-top: 8px;
+  .header-icon {{
+    width: 32px; height: 32px; border-radius: 4px;
+    background: linear-gradient(135deg, #0078D4, #00BCF2);
+    display: flex; align-items: center; justify-content: center;
   }}
-  .badge {{
-    background: rgba(255,255,255,0.2); border-radius: 12px;
-    padding: 2px 10px; font-size: 12px;
-  }}
+  .header-icon svg {{ width: 20px; height: 20px; }}
+  .header h1 {{ font-size: 15px; font-weight: 600; color: #201f1e; }}
+  .header .meta {{ font-size: 11px; color: #a19f9d; }}
+  .header-right {{ margin-left: auto; display: flex; gap: 16px; align-items: center; }}
+  .stat {{ font-size: 11px; color: #605e5c; }}
+  .stat b {{ color: #323130; }}
 
-  .container {{ display: flex; height: calc(100vh - 90px); }}
+  .container {{ display: flex; height: calc(100vh - 56px); }}
 
-  /* Canvas area */
   .canvas-area {{
-    flex: 1; position: relative; overflow: hidden; background: #fafafa;
-    background-image: radial-gradient(circle, #ddd 1px, transparent 1px);
+    flex: 1; position: relative; overflow: hidden;
+    background: white;
+    background-image:
+      linear-gradient(#faf9f8 1px, transparent 1px),
+      linear-gradient(90deg, #faf9f8 1px, transparent 1px);
     background-size: 24px 24px;
-    height: 100%;
   }}
   #canvas {{ position: absolute; top: 0; left: 0; width: 100%; height: 100%; }}
 
-  /* Sidebar */
+  .toolbar {{
+    position: absolute; top: 10px; left: 10px;
+    display: flex; gap: 1px; z-index: 10;
+    background: white; border: 1px solid #edebe9; border-radius: 6px;
+    padding: 2px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  }}
+  .tool-btn {{
+    background: transparent; border: none; border-radius: 4px;
+    padding: 5px 10px; font-size: 11px; cursor: pointer; color: #605e5c;
+    font-family: inherit; transition: all 0.1s;
+  }}
+  .tool-btn:hover {{ background: #f3f2f1; color: #323130; }}
+  .tool-sep {{ width: 1px; background: #edebe9; margin: 3px 1px; }}
+
+  .zoom-indicator {{
+    position: absolute; top: 10px; right: 286px;
+    background: white; border: 1px solid #edebe9; border-radius: 4px;
+    padding: 3px 8px; font-size: 10px; color: #a19f9d; z-index: 10;
+  }}
+
+  /* ── Sidebar ── */
   .sidebar {{
-    width: 300px; background: white; border-left: 1px solid #e0e0e0;
+    width: 272px; background: #faf9f8; border-left: 1px solid #edebe9;
     overflow-y: auto; display: flex; flex-direction: column;
   }}
+  .sidebar::-webkit-scrollbar {{ width: 3px; }}
+  .sidebar::-webkit-scrollbar-thumb {{ background: #c8c6c4; border-radius: 3px; }}
+
   .sidebar-header {{
-    padding: 16px; border-bottom: 1px solid #e0e0e0; font-weight: 600;
-    font-size: 14px; color: #333; background: #f8f9fa;
+    padding: 12px 14px; border-bottom: 1px solid #edebe9;
+    font-weight: 600; font-size: 12px; color: #605e5c;
+    position: sticky; top: 0; background: #faf9f8; z-index: 1;
   }}
-
+  .cat-label {{
+    padding: 10px 14px 4px; font-size: 10px; color: #a19f9d;
+    font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;
+  }}
   .service-card {{
-    margin: 8px; border: 1px solid #e0e0e0; border-radius: 8px;
-    overflow: hidden; cursor: pointer; transition: all 0.15s;
+    margin: 2px 6px; border: 1px solid #edebe9; border-radius: 6px;
+    overflow: hidden; cursor: pointer; transition: all 0.1s;
+    background: white;
   }}
-  .service-card:hover {{ box-shadow: 0 2px 8px rgba(0,0,0,0.1); transform: translateY(-1px); }}
-  .service-card.selected {{ border-color: #0078D4; box-shadow: 0 0 0 2px rgba(0,120,212,0.2); }}
-
+  .service-card:hover {{ border-color: #c8c6c4; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }}
+  .service-card.selected {{ border-color: #0078D4; box-shadow: 0 0 0 1px #0078D4; }}
   .service-card-header {{
-    padding: 10px 12px; display: flex; align-items: center; gap: 10px;
-    border-bottom: 1px solid #f0f0f0;
+    padding: 7px 10px; display: flex; align-items: center; gap: 8px;
   }}
-  .service-icon {{ font-size: 20px; width: 32px; text-align: center; }}
-  .service-name {{ font-size: 13px; font-weight: 600; }}
-  .service-sku {{ font-size: 11px; color: #888; margin-top: 2px; }}
-  .service-card-body {{ padding: 8px 12px; }}
-  .service-detail {{
-    font-size: 11px; color: #555; padding: 2px 0;
-    display: flex; align-items: center; gap: 4px;
-  }}
-  .service-detail::before {{ content: "•"; color: #0078D4; }}
+  .sc-icon {{ width: 28px; height: 28px; flex-shrink: 0; }}
+  .sc-icon svg {{ width: 28px; height: 28px; }}
+  .service-name {{ font-size: 12px; font-weight: 600; color: #323130; }}
+  .service-sku {{ font-size: 10px; color: #a19f9d; }}
+  .service-card-body {{ padding: 2px 10px 6px; }}
+  .service-detail {{ font-size: 10px; color: #605e5c; padding: 1px 0; }}
+  .service-detail::before {{ content: "› "; color: #a19f9d; }}
   .private-badge {{
-    font-size: 10px; background: #f3eef9; color: #5C2D91;
-    border-radius: 8px; padding: 1px 7px; margin-left: auto;
-    border: 1px solid #d4b8ff;
+    font-size: 9px; background: #f3eef9; color: #5C2D91;
+    border-radius: 3px; padding: 1px 5px; margin-left: auto;
+    border: 1px solid #e0d4f5;
   }}
 
   .legend {{
-    padding: 12px 16px; border-top: 1px solid #e0e0e0;
-    margin-top: auto;
+    padding: 10px 14px; border-top: 1px solid #edebe9; margin-top: auto;
   }}
-  .legend-title {{ font-size: 12px; font-weight: 600; color: #555; margin-bottom: 8px; }}
-  .legend-item {{
-    display: flex; align-items: center; gap: 8px;
-    font-size: 11px; color: #666; margin-bottom: 4px;
-  }}
-  .legend-line {{
-    width: 24px; height: 2px;
-  }}
+  .legend-title {{ font-size: 10px; font-weight: 600; color: #a19f9d; margin-bottom: 5px; }}
+  .legend-item {{ display: flex; align-items: center; gap: 6px; font-size: 10px; color: #605e5c; margin-bottom: 2px; }}
+  .legend-line {{ width: 18px; height: 2px; border-radius: 1px; }}
+  .legend-line-dash {{ width: 18px; height: 0; border-top: 2px dashed; }}
 
-  /* SVG styles */
-  .node {{ cursor: pointer; }}
-  .node-rect {{ rx: 10; ry: 10; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1)); transition: all 0.15s; }}
-  .node-rect:hover {{ filter: drop-shadow(0 4px 12px rgba(0,0,0,0.2)); }}
-  .edge-label {{
-    font-size: 10px; fill: #555;
-    background: white; padding: 2px 4px; border-radius: 3px;
-  }}
+  /* ── SVG styles ── */
+  .node {{ cursor: grab; pointer-events: all; }}
+  .node:active {{ cursor: grabbing; }}
+  .node .node-bg {{ pointer-events: all; }}
+  .node.selected .node-bg {{ stroke: #0078D4; stroke-width: 2.5; }}
+  .node.selected {{ filter: drop-shadow(0 0 6px rgba(0,120,212,0.4)); }}
 
-  .category-label {{
-    font-size: 11px; fill: #888; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;
+  .subnet-rect {{
+    rx: 6; ry: 6;
   }}
-
-  .vnet-rect {{
-    fill: none; stroke: #5C2D91; stroke-width: 2; stroke-dasharray: 8,4;
-    rx: 16; ry: 16;
+  .subnet-label {{
+    font-size: 11px; font-weight: 600; font-family: 'Segoe UI', sans-serif;
   }}
-  .vnet-label {{ font-size: 12px; fill: #5C2D91; font-weight: 600; }}
-
-  .toolbar {{
-    position: absolute; top: 12px; left: 12px; display: flex; gap: 6px; z-index: 10;
-  }}
-  .tool-btn {{
-    background: white; border: 1px solid #ddd; border-radius: 6px;
-    padding: 6px 12px; font-size: 12px; cursor: pointer; color: #333;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1); transition: all 0.15s;
-  }}
-  .tool-btn:hover {{ background: #f0f0f0; }}
 
   .status-bar {{
-    position: absolute; bottom: 12px; left: 12px; right: 12px;
-    background: white; border: 1px solid #e0e0e0; border-radius: 8px;
-    padding: 8px 14px; font-size: 12px; color: #555;
-    display: flex; justify-content: space-between; align-items: center;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    position: absolute; bottom: 10px; left: 10px;
+    background: white; border: 1px solid #edebe9; border-radius: 4px;
+    padding: 4px 10px; font-size: 10px; color: #a19f9d;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
   }}
-  .status-ok {{ color: #0F9D58; font-weight: 600; }}
 
   .tooltip {{
-    position: absolute; background: #333; color: white; padding: 6px 10px;
+    position: absolute; background: white; color: #323130;
+    border: 1px solid #edebe9; padding: 8px 12px;
     border-radius: 6px; font-size: 11px; pointer-events: none;
     white-space: nowrap; z-index: 100; display: none;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
   }}
+  .tooltip strong {{ color: #201f1e; }}
+  .tooltip-detail {{ color: #605e5c; margin-top: 1px; font-size: 10px; }}
 </style>
 </head>
 <body>
 
 <div class="header">
-  <div class="ms-logo">☁️</div>
+  <div class="header-icon">
+    <svg viewBox="0 0 24 24"><path d="M12 2L2 7v10l10 5 10-5V7L12 2z" fill="white" opacity="0.9"/></svg>
+  </div>
   <div>
     <h1>{title}</h1>
-    <div class="meta">Azure Architecture Draft · 생성: {generated_at}</div>
-    <div class="badges">
-      <span class="badge">🔒 {private_count}/{len(services)} Private</span>
-      <span class="badge">📦 {len(services)} 서비스</span>
-      <span class="badge">🔗 {len(connections)} 연결</span>
-    </div>
+    <div class="meta">Azure Architecture &middot; {generated_at}</div>
+  </div>
+  <div class="header-right">
+    <div class="stat"><b>{svc_count}</b> Services</div>
+    <div class="stat"><b>{pe_count}</b> Private Endpoints</div>
+    <div class="stat"><b>{len(connections)}</b> Connections</div>
   </div>
 </div>
 
 <div class="container">
   <div class="canvas-area">
     <div class="toolbar">
-      <button class="tool-btn" onclick="fitToScreen()">↔ 맞추기</button>
-      <button class="tool-btn" onclick="zoomIn()">+ 확대</button>
-      <button class="tool-btn" onclick="zoomOut()">- 축소</button>
-      <button class="tool-btn" onclick="resetZoom()">↺ 리셋</button>
+      <button class="tool-btn" onclick="fitToScreen()">Fit</button>
+      <div class="tool-sep"></div>
+      <button class="tool-btn" onclick="zoomIn()">+</button>
+      <button class="tool-btn" onclick="zoomOut()">&minus;</button>
+      <div class="tool-sep"></div>
+      <button class="tool-btn" onclick="resetZoom()">Reset</button>
     </div>
+    <div class="zoom-indicator" id="zoom-level">100%</div>
     <svg id="canvas">
       <defs>
-        <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5"
-          markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-          <path d="M 0 0 L 10 5 L 0 10 z" fill="#0078D4" opacity="0.7"/>
+        <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#0078D4" opacity="0.5"/>
         </marker>
-        <marker id="arrow-data" viewBox="0 0 10 10" refX="9" refY="5"
-          markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-          <path d="M 0 0 L 10 5 L 0 10 z" fill="#0F9D58" opacity="0.7"/>
+        <marker id="arr-data" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#0F9D58" opacity="0.5"/>
         </marker>
-        <marker id="arrow-security" viewBox="0 0 10 10" refX="9" refY="5"
-          markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-          <path d="M 0 0 L 10 5 L 0 10 z" fill="#E8A000" opacity="0.7"/>
+        <marker id="arr-sec" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#E8A000" opacity="0.5"/>
+        </marker>
+        <marker id="arr-pe" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#5C2D91" opacity="0.5"/>
         </marker>
         <filter id="shadow">
-          <feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.12"/>
+          <feDropShadow dx="0" dy="1" stdDeviation="2" flood-opacity="0.08"/>
         </filter>
       </defs>
-      <g id="diagram-root">
-        <!-- Diagram content will be inserted here by JS -->
-      </g>
+      <g id="diagram-root"></g>
     </svg>
     <div id="tooltip" class="tooltip"></div>
-    <div class="status-bar">
-      <span>💡 노드를 드래그하거나 클릭하면 세부 정보를 볼 수 있습니다</span>
-      <span class="status-ok">✅ 초안 완성 — 수정이 필요하면 Claude에게 말씀해주세요</span>
-    </div>
+    <div class="status-bar">Drag nodes &middot; Scroll to zoom &middot; Drag empty space to pan</div>
   </div>
 
   <div class="sidebar">
-    <div class="sidebar-header">📋 서비스 목록</div>
+    <div class="sidebar-header">Resources</div>
     <div id="service-list"></div>
     <div class="legend">
-      <div class="legend-title">연결선 범례</div>
-      <div class="legend-item">
-        <div class="legend-line" style="background:#0078D4;"></div> API 호출
-      </div>
-      <div class="legend-item">
-        <div class="legend-line" style="background:#0F9D58;"></div> 데이터 흐름
-      </div>
-      <div class="legend-item">
-        <div class="legend-line" style="background:#E8A000; height:2px; background: repeating-linear-gradient(90deg,#E8A000 0,#E8A000 5px,transparent 5px,transparent 10px);"></div> 보안/키 참조
-      </div>
+      <div class="legend-title">Connection Types</div>
+      <div class="legend-item"><div class="legend-line" style="background:#0078D4;"></div> API</div>
+      <div class="legend-item"><div class="legend-line" style="background:#0F9D58;"></div> Data</div>
+      <div class="legend-item"><div class="legend-line-dash" style="border-color:#E8A000;"></div> Security</div>
+      <div class="legend-item"><div class="legend-line-dash" style="border-color:#5C2D91;"></div> Private Endpoint</div>
     </div>
   </div>
 </div>
 
 <script>
-const NODES_DATA = {nodes_js};
-const EDGES_DATA = {edges_js};
+const NODES = {nodes_js};
+const EDGES = {edges_js};
 
-// Layout: position nodes in a smart grid
-const CANVAS_WIDTH = 900;
-const CANVAS_HEIGHT = 600;
-const NODE_W = 160;
-const NODE_H = 80;
-const PADDING = 40;
+// ── Node sizing ──
+const SVC_W = 120, SVC_H = 100;  // service node (icon above, name below)
+const PE_W = 90, PE_H = 70;      // pe node (smaller)
+const GAP = 40;
 
-// Group nodes by category
-const categoryGroups = {{}};
-NODES_DATA.forEach(n => {{
-  if (!categoryGroups[n.category]) categoryGroups[n.category] = [];
-  categoryGroups[n.category].push(n);
-}});
+// ── Layout: WAF style (top-down) ──
+// Row 0: VNet boundary (drawn around private nodes)
+//   Inside VNet: PE subnet row
+// Row 1: Main services by category
+// External/Monitor: outside VNet
 
-// Assign positions
 const positions = {{}};
+const peNodes = NODES.filter(n => n.type === 'pe');
+const mainNodes = NODES.filter(n => n.type !== 'pe');
 
-// PE 노드는 연결된 리소스 바로 아래에 배치 — 나머지 노드 먼저 배치 후 처리
-const peNodes = NODES_DATA.filter(n => n.type === 'pe');
-const nonPeNodes = NODES_DATA.filter(n => n.type !== 'pe');
-
-const catKeys = Object.keys(categoryGroups).filter(c =>
-  nonPeNodes.some(n => n.category === c)
-);
-const cols = Math.ceil(Math.sqrt(nonPeNodes.length));
-
-let xi = 0, yi = 0;
-catKeys.forEach(cat => {{
-  const nodes = nonPeNodes.filter(n => n.category === cat);
-  nodes.forEach((n, i) => {{
-    positions[n.id] = {{
-      x: PADDING + (xi % cols) * (NODE_W + 60),
-      y: PADDING + yi * (NODE_H + 50) + (yi > 0 ? 20 : 0),
-    }};
-    xi++;
-    if (xi % cols === 0) yi++;
-  }});
-  yi++;
+// Categorize main nodes
+const catOrder = ['External', 'AI', 'Data', 'Security', 'Compute', 'Monitor', 'Network', 'Azure'];
+const catGroups = {{}};
+mainNodes.forEach(n => {{
+  if (!catGroups[n.category]) catGroups[n.category] = [];
+  catGroups[n.category].push(n);
 }});
 
-// PE 노드: 연결된 리소스(edge의 to) 바로 아래에 배치
-peNodes.forEach(pe => {{
-  const edge = EDGES_DATA.find(e => e.from === pe.id || e.to === pe.id);
+// Place main services in a row (all private services at same y)
+const privateMainNodes = mainNodes.filter(n => n.private);
+const externalNodes = mainNodes.filter(n => !n.private);
+
+// Services row
+const SERVICES_Y = 280;
+let sx = 60;
+catOrder.forEach(cat => {{
+  const nodes = (catGroups[cat] || []).filter(n => n.private);
+  nodes.forEach(n => {{
+    positions[n.id] = {{ x: sx, y: SERVICES_Y }};
+    sx += SVC_W + GAP;
+  }});
+  if (nodes.length > 0) sx += 20; // extra gap between categories
+}});
+
+// External nodes above
+let ex = 60;
+catOrder.forEach(cat => {{
+  const nodes = (catGroups[cat] || []).filter(n => !n.private);
+  nodes.forEach(n => {{
+    positions[n.id] = {{ x: ex, y: SERVICES_Y + SVC_H + 80 }};
+    ex += SVC_W + GAP;
+  }});
+}});
+
+// PE nodes: in a row above services (PE subnet area)
+const PE_Y = 120;
+// Map PE to parent service via edges
+peNodes.forEach((pe, i) => {{
+  const edge = EDGES.find(e => e.from === pe.id || e.to === pe.id);
   const parentId = edge ? (edge.from === pe.id ? edge.to : edge.from) : null;
   const parentPos = parentId ? positions[parentId] : null;
-  positions[pe.id] = parentPos
-    ? {{ x: parentPos.x, y: parentPos.y + NODE_H + 30 }}
-    : {{ x: PADDING + xi * (NODE_W + 60), y: PADDING }};
+  if (parentPos) {{
+    positions[pe.id] = {{ x: parentPos.x + (SVC_W - PE_W) / 2, y: PE_Y }};
+  }} else {{
+    positions[pe.id] = {{ x: 60 + i * (PE_W + 30), y: PE_Y }};
+  }}
 }});
 
-// Dragging state
+// Resolve PE overlaps
+const pePositions = peNodes.map(pe => positions[pe.id]).filter(Boolean);
+pePositions.sort((a, b) => a.x - b.x);
+for (let i = 1; i < pePositions.length; i++) {{
+  if (pePositions[i].x < pePositions[i-1].x + PE_W + 15) {{
+    pePositions[i].x = pePositions[i-1].x + PE_W + 15;
+  }}
+}}
+
+// ── State ──
 let dragging = null, dragOffX = 0, dragOffY = 0;
-
-// Pan & Zoom state
 let viewTransform = {{ x: 0, y: 0, scale: 1 }};
-let isPanning = false, panStartX = 0, panStartY = 0, panStartTx = 0, panStartTy = 0;
+let isPanning = false, panSX = 0, panSY = 0, panSTx = 0, panSTy = 0;
+let _routeCounter = 0;
 
-function getMarkerForType(type) {{
-  if (type === 'data') return 'arrow-data';
-  if (type === 'security') return 'arrow-security';
-  return 'arrow';
+// ── Bidirectional highlight ──
+function selectNode(nodeId) {{
+  // Clear all selections
+  document.querySelectorAll('.node').forEach(n => n.classList.remove('selected'));
+  document.querySelectorAll('.service-card').forEach(c => c.classList.remove('selected'));
+  // Highlight diagram node
+  const svgNode = document.querySelector(`.node[data-id="${{nodeId}}"]`);
+  if (svgNode) svgNode.classList.add('selected');
+  // Highlight sidebar card
+  const card = document.getElementById('card-' + nodeId);
+  if (card) {{ card.classList.add('selected'); card.scrollIntoView({{ behavior: 'smooth', block: 'nearest' }}); }}
+}}
+
+function markerFor(type) {{
+  if (type === 'data') return 'arr-data';
+  if (type === 'security') return 'arr-sec';
+  if (type === 'private') return 'arr-pe';
+  return 'arr';
 }}
 
 function renderDiagram() {{
   const root = document.getElementById('diagram-root');
   root.innerHTML = '';
+  _routeCounter = 0;  // reset stagger counter each render
 
-  // Detect private nodes for VNet boundary
-  const privateNodes = NODES_DATA.filter(n => n.private);
-  if (privateNodes.length > 0) {{
-    const pxs = privateNodes.map(n => positions[n.id].x);
-    const pys = privateNodes.map(n => positions[n.id].y);
-    const minX = Math.min(...pxs) - 24;
-    const minY = Math.min(...pys) - 40;
-    const maxX = Math.max(...pxs) + NODE_W + 24;
-    const maxY = Math.max(...pys) + NODE_H + 24;
-    const vnet = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-    vnet.setAttribute('x', minX); vnet.setAttribute('y', minY);
-    vnet.setAttribute('width', maxX - minX); vnet.setAttribute('height', maxY - minY);
-    vnet.setAttribute('class', 'vnet-rect');
-    root.appendChild(vnet);
-    const vnetLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    vnetLabel.setAttribute('x', minX + 12); vnetLabel.setAttribute('y', minY + 16);
-    vnetLabel.setAttribute('class', 'vnet-label');
-    vnetLabel.textContent = '🌐 Azure Virtual Network (Private)';
-    root.appendChild(vnetLabel);
+  // ── Draw VNet boundary ──
+  const pvt = NODES.filter(n => n.private || n.type === 'pe');
+  if (pvt.length > 0) {{
+    const allX = pvt.map(n => positions[n.id]?.x).filter(x => x !== undefined);
+    const allY = pvt.map(n => positions[n.id]?.y).filter(y => y !== undefined);
+    if (allX.length > 0) {{
+      const pad = 36;
+      const vx = Math.min(...allX) - pad;
+      const vy = Math.min(...allY) - 50;
+      const vw = Math.max(...allX) - Math.min(...allX) + SVC_W + pad * 2;
+      const vh = Math.max(...allY) - Math.min(...allY) + SVC_H + pad + 50;
+
+      // VNet box
+      const vr = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      vr.setAttribute('x', vx); vr.setAttribute('y', vy);
+      vr.setAttribute('width', vw); vr.setAttribute('height', vh);
+      vr.setAttribute('fill', '#f8f7ff'); vr.setAttribute('stroke', '#5C2D91');
+      vr.setAttribute('stroke-width', '2'); vr.setAttribute('stroke-dasharray', '8,4');
+      vr.setAttribute('rx', '12');
+      root.appendChild(vr);
+
+      // VNet icon + label
+      const vl = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      vl.innerHTML = `<svg x="${{vx + 10}}" y="${{vy + 6}}" width="20" height="20" viewBox="0 0 48 48">
+        <rect x="6" y="6" width="36" height="36" rx="4" fill="none" stroke="#5C2D91" stroke-width="3"/>
+        <circle cx="16" cy="18" r="3" fill="#5C2D91"/><circle cx="32" cy="18" r="3" fill="#5C2D91"/><circle cx="24" cy="32" r="3" fill="#5C2D91"/>
+      </svg>
+      <text x="${{vx + 34}}" y="${{vy + 20}}" font-size="12" font-weight="600" fill="#5C2D91" font-family="Segoe UI, sans-serif">Virtual Network</text>`;
+      root.appendChild(vl);
+
+      // PE subnet box
+      if (peNodes.length > 0) {{
+        const peXs = peNodes.map(pe => positions[pe.id]?.x).filter(x => x !== undefined);
+        const peYs = peNodes.map(pe => positions[pe.id]?.y).filter(y => y !== undefined);
+        if (peXs.length > 0) {{
+          const sp = 20;
+          const psx = Math.min(...peXs) - sp;
+          const psy = Math.min(...peYs) - 28;
+          const psw = Math.max(...peXs) - Math.min(...peXs) + PE_W + sp * 2;
+          const psh = Math.max(...peYs) - Math.min(...peYs) + PE_H + sp + 28;
+
+          const sr = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+          sr.setAttribute('x', psx); sr.setAttribute('y', psy);
+          sr.setAttribute('width', psw); sr.setAttribute('height', psh);
+          sr.setAttribute('fill', '#f3eef9'); sr.setAttribute('stroke', '#d4b8ff');
+          sr.setAttribute('stroke-width', '1'); sr.setAttribute('rx', '8');
+          sr.setAttribute('stroke-dasharray', '4,4');
+          root.appendChild(sr);
+
+          const sl = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+          sl.setAttribute('x', psx + 10); sl.setAttribute('y', psy + 16);
+          sl.setAttribute('font-size', '10'); sl.setAttribute('fill', '#7c3aed');
+          sl.setAttribute('font-weight', '600'); sl.setAttribute('font-family', 'Segoe UI, sans-serif');
+          sl.textContent = 'Private endpoint subnet';
+          root.appendChild(sl);
+        }}
+      }}
+    }}
   }}
 
-  // Draw edges first (behind nodes)
-  EDGES_DATA.forEach(edge => {{
-    const fromPos = positions[edge.from];
-    const toPos = positions[edge.to];
-    if (!fromPos || !toPos) return;
+  // ── Edge routing (obstacle-free) ──
+  // Compute global bounds: the absolute bottom of ALL nodes
+  function getGlobalBounds() {{
+    let minY = Infinity, maxY = -Infinity;
+    NODES.forEach(n => {{
+      const pos = positions[n.id];
+      if (!pos) return;
+      const h = n.type === 'pe' ? PE_H : SVC_H;
+      if (pos.y < minY) minY = pos.y;
+      if (pos.y + h > maxY) maxY = pos.y + h;
+    }});
+    return {{ minY, maxY }};
+  }}
 
-    const x1 = fromPos.x + NODE_W / 2;
-    const y1 = fromPos.y + NODE_H / 2;
-    const x2 = toPos.x + NODE_W / 2;
-    const y2 = toPos.y + NODE_H / 2;
-
-    // Curved path
-    const mx = (x1 + x2) / 2;
-    const my = (y1 + y2) / 2 - 20;
-
-    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    path.setAttribute('d', `M ${{x1}} ${{y1}} Q ${{mx}} ${{my}} ${{x2}} ${{y2}}`);
-    path.setAttribute('fill', 'none');
-    path.setAttribute('stroke', edge.color);
-    path.setAttribute('stroke-width', '1.8');
-    path.setAttribute('stroke-dasharray', edge.dash || '0');
-    path.setAttribute('marker-end', `url(#${{getMarkerForType(edge.type)}})`);
-    path.setAttribute('opacity', '0.75');
-    root.appendChild(path);
-
-    // Edge label
-    if (edge.label) {{
-      const labelG = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-      const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-      const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-      text.setAttribute('x', mx); text.setAttribute('y', my - 2);
-      text.setAttribute('text-anchor', 'middle');
-      text.setAttribute('font-size', '10');
-      text.setAttribute('fill', '#444');
-      text.setAttribute('font-family', 'Segoe UI, sans-serif');
-      text.textContent = edge.label;
-
-      const bbox = {{ width: edge.label.length * 6.5 + 8, height: 16 }};
-      rect.setAttribute('x', mx - bbox.width / 2); rect.setAttribute('y', my - 13);
-      rect.setAttribute('width', bbox.width); rect.setAttribute('height', bbox.height);
-      rect.setAttribute('rx', '4'); rect.setAttribute('fill', 'white');
-      rect.setAttribute('stroke', '#e0e0e0'); rect.setAttribute('stroke-width', '1');
-      labelG.appendChild(rect); labelG.appendChild(text);
-      root.appendChild(labelG);
-    }}
-  }});
-
-  // Draw nodes
-  NODES_DATA.forEach(node => {{
+  function getNodeBox(node) {{
     const pos = positions[node.id];
+    if (!pos) return null;
+    const w = node.type === 'pe' ? PE_W : SVC_W;
+    const h = node.type === 'pe' ? PE_H : SVC_H;
+    return {{ x: pos.x, y: pos.y, w, h, cx: pos.x + w/2, cy: pos.y + h/2 }};
+  }}
+
+  // Check if direct line between two nodes crosses ANY other node
+  function hasObstacle(fromId, toId, x1, y1, x2, y2) {{
+    for (const n of NODES) {{
+      if (n.id === fromId || n.id === toId) continue;
+      const pos = positions[n.id];
+      if (!pos) continue;
+      const w = n.type === 'pe' ? PE_W : SVC_W;
+      const h = n.type === 'pe' ? PE_H : SVC_H;
+      const pad = 6;
+      const left = pos.x - pad, right = pos.x + w + pad;
+      const top = pos.y - pad, bottom = pos.y + h + pad;
+      // Liang-Barsky line clipping
+      const dx = x2 - x1, dy = y2 - y1;
+      let tmin = 0, tmax = 1;
+      const edges = [[-dx, x1 - left], [dx, right - x1], [-dy, y1 - top], [dy, bottom - y1]];
+      let hit = true;
+      for (const [p, q] of edges) {{
+        if (Math.abs(p) < 0.001) {{ if (q < 0) {{ hit = false; break; }} }}
+        else {{
+          const t = q / p;
+          if (p < 0) {{ if (t > tmin) tmin = t; }}
+          else {{ if (t < tmax) tmax = t; }}
+          if (tmin > tmax) {{ hit = false; break; }}
+        }}
+      }}
+      if (hit && tmin < tmax) return true;
+    }}
+    return false;
+  }}
+
+  // Border point: exit/enter at edge of rectangle
+  function borderExit(box, side) {{
+    // side: 'top', 'bottom', 'left', 'right'
+    if (side === 'top') return {{ x: box.cx, y: box.y }};
+    if (side === 'bottom') return {{ x: box.cx, y: box.y + box.h }};
+    if (side === 'left') return {{ x: box.x, y: box.cy }};
+    if (side === 'right') return {{ x: box.x + box.w, y: box.cy }};
+  }}
+
+  // ── Nodes (rendered first, edges on top) ──
+  NODES.forEach(node => {{
+    const pos = positions[node.id];
+    if (!pos) return;
+    const isPe = node.type === 'pe';
+    const nw = isPe ? PE_W : SVC_W;
+    const nh = isPe ? PE_H : SVC_H;
     const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
     g.setAttribute('class', 'node');
     g.setAttribute('data-id', node.id);
-    g.setAttribute('transform', `translate(${{pos.x}}, ${{pos.y}})`);
+    g.setAttribute('transform', `translate(${{pos.x}},${{pos.y}})`);
 
-    // Node background
+    // Card background — full clickable area
     const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-    rect.setAttribute('width', NODE_W); rect.setAttribute('height', NODE_H);
-    rect.setAttribute('rx', '10'); rect.setAttribute('ry', '10');
-    rect.setAttribute('fill', node.bg);
-    rect.setAttribute('stroke', node.color);
-    rect.setAttribute('stroke-width', '1.5');
+    rect.setAttribute('class', 'node-bg');
+    rect.setAttribute('width', nw); rect.setAttribute('height', nh);
+    rect.setAttribute('rx', '8'); rect.setAttribute('fill', 'white');
+    rect.setAttribute('stroke', '#edebe9'); rect.setAttribute('stroke-width', '1');
     rect.setAttribute('filter', 'url(#shadow)');
+    g.appendChild(rect);
 
     // Color accent bar at top
     const accent = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-    accent.setAttribute('width', NODE_W); accent.setAttribute('height', '4');
-    accent.setAttribute('rx', '10'); accent.setAttribute('fill', node.color);
+    accent.setAttribute('width', nw); accent.setAttribute('height', '3');
+    accent.setAttribute('rx', '8'); accent.setAttribute('fill', node.color);
+    accent.setAttribute('opacity', '0.7');
+    g.appendChild(accent);
 
-    // Icon
-    const icon = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    icon.setAttribute('x', '16'); icon.setAttribute('y', '32');
-    icon.setAttribute('font-size', '20');
-    icon.textContent = node.icon;
+    // Icon (SVG)
+    const iconSize = isPe ? 28 : 36;
+    const iconX = (nw - iconSize) / 2;
+    const iconY = isPe ? 10 : 12;
+    const iconG = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    iconG.setAttribute('x', iconX); iconG.setAttribute('y', iconY);
+    iconG.setAttribute('width', iconSize); iconG.setAttribute('height', iconSize);
+    iconG.setAttribute('viewBox', '0 0 48 48');
+    iconG.innerHTML = node.icon_svg;
+    g.appendChild(iconG);
 
-    // Service name
+    // Name
     const name = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    name.setAttribute('x', '42'); name.setAttribute('y', '26');
-    name.setAttribute('font-size', '11'); name.setAttribute('font-weight', '600');
-    name.setAttribute('fill', '#1a1a1a');
+    name.setAttribute('x', nw/2); name.setAttribute('y', isPe ? 52 : 60);
+    name.setAttribute('text-anchor', 'middle');
+    name.setAttribute('font-size', isPe ? '9' : '10');
+    name.setAttribute('font-weight', '600'); name.setAttribute('fill', '#323130');
     name.setAttribute('font-family', 'Segoe UI, sans-serif');
-    name.textContent = node.name.length > 18 ? node.name.substring(0, 17) + '…' : node.name;
+    const maxC = isPe ? 12 : 16;
+    name.textContent = node.name.length > maxC ? node.name.substring(0, maxC-1) + '..' : node.name;
+    g.appendChild(name);
 
-    // SKU
-    const sku = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    sku.setAttribute('x', '42'); sku.setAttribute('y', '40');
-    sku.setAttribute('font-size', '10'); sku.setAttribute('fill', '#666');
-    sku.setAttribute('font-family', 'Segoe UI, sans-serif');
-    sku.textContent = node.sku;
-
-    // rect, accent 먼저 (배경) → 그 위에 텍스트들
-    g.appendChild(rect); g.appendChild(accent);
-
-    // Icon
-    g.appendChild(icon);
-    g.appendChild(name); g.appendChild(sku);
-
-    // Private indicator
-    if (node.private) {{
-      const lockIcon = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-      lockIcon.setAttribute('x', NODE_W - 18); lockIcon.setAttribute('y', '26');
-      lockIcon.setAttribute('font-size', '12'); lockIcon.setAttribute('fill', '#5C2D91');
-      lockIcon.textContent = '🔒';
-      g.appendChild(lockIcon);
+    // SKU label
+    if (!isPe && node.sku) {{
+      const sku = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      sku.setAttribute('x', nw/2); sku.setAttribute('y', 72);
+      sku.setAttribute('text-anchor', 'middle');
+      sku.setAttribute('font-size', '9'); sku.setAttribute('fill', '#a19f9d');
+      sku.setAttribute('font-family', 'Segoe UI, sans-serif');
+      sku.textContent = node.sku;
+      g.appendChild(sku);
     }}
 
-    // Details (first 2)
-    node.details.slice(0, 2).forEach((d, i) => {{
-      const detail = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-      detail.setAttribute('x', '12'); detail.setAttribute('y', `${{54 + i * 14}}`);
-      detail.setAttribute('font-size', '9.5'); detail.setAttribute('fill', '#555');
-      detail.setAttribute('font-family', 'Segoe UI, sans-serif');
-      detail.textContent = '· ' + (d.length > 22 ? d.substring(0, 21) + '…' : d);
-      g.appendChild(detail);
-    }});
+    if (isPe && node.details.length > 0) {{
+      const det = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      det.setAttribute('x', nw/2); det.setAttribute('y', 63);
+      det.setAttribute('text-anchor', 'middle');
+      det.setAttribute('font-size', '8'); det.setAttribute('fill', '#a19f9d');
+      det.setAttribute('font-family', 'Segoe UI, sans-serif');
+      det.textContent = node.details[0];
+      g.appendChild(det);
+    }}
 
-    // Drag events
+    // Category label below
+    if (!isPe) {{
+      const cat = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      cat.setAttribute('x', nw/2); cat.setAttribute('y', nh + 14);
+      cat.setAttribute('text-anchor', 'middle');
+      cat.setAttribute('font-size', '9'); cat.setAttribute('fill', node.color);
+      cat.setAttribute('font-weight', '600');
+      cat.setAttribute('font-family', 'Segoe UI, sans-serif');
+      cat.textContent = node.category;
+      g.appendChild(cat);
+    }}
+
+    // Private badge on card
+    if (node.private && !isPe) {{
+      const badge = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      const br = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      br.setAttribute('x', nw - 8); br.setAttribute('y', '4');
+      br.setAttribute('width', '6'); br.setAttribute('height', '6');
+      br.setAttribute('rx', '3'); br.setAttribute('fill', '#5C2D91');
+      br.setAttribute('opacity', '0.6');
+      badge.appendChild(br);
+      g.appendChild(badge);
+    }}
+
+    // ── Events: drag vs click separation ──
+    let _dragStartX = 0, _dragStartY = 0, _didDrag = false;
     g.addEventListener('mousedown', e => {{
+      if (e.button !== 0) return;
       dragging = node.id;
+      _didDrag = false;
+      _dragStartX = e.clientX; _dragStartY = e.clientY;
       const svgPt = getSVGPoint(e);
-      dragOffX = svgPt.x - pos.x;
-      dragOffY = svgPt.y - pos.y;
-      e.preventDefault();
-    }});
-
-    // Tooltip
-    g.addEventListener('mouseenter', e => {{
-      const tooltip = document.getElementById('tooltip');
-      const details = node.details.join('\\n• ');
-      tooltip.style.display = 'block';
-      tooltip.innerHTML = `<strong>${{node.icon}} ${{node.name}}</strong><br>SKU: ${{node.sku || 'N/A'}}<br>Private: ${{node.private ? '✅' : '❌'}}`;
+      dragOffX = svgPt.x - pos.x; dragOffY = svgPt.y - pos.y;
+      e.stopPropagation(); e.preventDefault();
     }});
     g.addEventListener('mousemove', e => {{
-      const tooltip = document.getElementById('tooltip');
-      tooltip.style.left = (e.clientX + 12) + 'px';
-      tooltip.style.top = (e.clientY - 8) + 'px';
-    }});
-    g.addEventListener('mouseleave', () => {{
-      document.getElementById('tooltip').style.display = 'none';
-    }});
-
-    // Click: highlight in sidebar
-    g.addEventListener('click', () => {{
-      document.querySelectorAll('.service-card').forEach(c => c.classList.remove('selected'));
-      const card = document.getElementById('card-' + node.id);
-      if (card) {{
-        card.classList.add('selected');
-        card.scrollIntoView({{ behavior: 'smooth', block: 'nearest' }});
+      if (dragging === node.id) {{
+        const dx = Math.abs(e.clientX - _dragStartX);
+        const dy = Math.abs(e.clientY - _dragStartY);
+        if (dx > 3 || dy > 3) _didDrag = true;
       }}
     }});
+    g.addEventListener('mouseup', e => {{
+      if (!_didDrag && dragging === node.id) {{
+        selectNode(node.id);
+      }}
+    }});
+    g.addEventListener('mouseenter', e => {{
+      const tt = document.getElementById('tooltip');
+      const dets = node.details.map(d => `<div class="tooltip-detail">› ${{d}}</div>`).join('');
+      tt.style.display = 'block';
+      tt.innerHTML = `<strong>${{node.name}}</strong>${{node.sku ? `<div class="tooltip-detail">SKU: ${{node.sku}}</div>` : ''}}${{dets}}`;
+    }});
+    g.addEventListener('mousemove', e => {{
+      const tt = document.getElementById('tooltip');
+      tt.style.left = (e.clientX+12)+'px'; tt.style.top = (e.clientY-8)+'px';
+    }});
+    g.addEventListener('mouseleave', () => {{ document.getElementById('tooltip').style.display = 'none'; }});
 
     root.appendChild(g);
   }});
+
+  // ── Edges ──
+  // Strategy: PE edges = direct vertical. All others that have obstacles = route BELOW all nodes.
+  const bounds = getGlobalBounds();
+  const baseRouteY = bounds.maxY + 30;  // below every node guaranteed
+
+  EDGES.forEach(edge => {{
+    const fn = NODES.find(n => n.id === edge.from);
+    const tn = NODES.find(n => n.id === edge.to);
+    if (!fn || !tn) return;
+    const fromBox = getNodeBox(fn);
+    const toBox = getNodeBox(tn);
+    if (!fromBox || !toBox) return;
+
+    const isPeEdge = edge.type === 'private';
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    let labelX, labelY;
+
+    // PE edges: always direct vertical/straight line
+    if (isPeEdge) {{
+      const sx = fromBox.cx, sy = fromBox.y + fromBox.h;  // bottom of PE
+      const ex = toBox.cx, ey = toBox.y;                   // top of service
+      path.setAttribute('d', `M ${{sx}} ${{sy}} L ${{ex}} ${{ey}}`);
+      labelX = (sx+ex)/2; labelY = (sy+ey)/2;
+    }}
+    // Adjacent nodes (no obstacle between them): direct connection
+    else if (!hasObstacle(edge.from, edge.to, fromBox.cx, fromBox.cy, toBox.cx, toBox.cy)) {{
+      const sx = fromBox.cx, sy = fromBox.cy;
+      const ex = toBox.cx, ey = toBox.cy;
+      // Exit/enter at closest borders
+      const fromSide = ex > sx ? 'right' : ex < sx ? 'left' : (ey > sy ? 'bottom' : 'top');
+      const toSide = sx > ex ? 'right' : sx < ex ? 'left' : (sy > ey ? 'bottom' : 'top');
+      const sp = borderExit(fromBox, fromSide);
+      const ep = borderExit(toBox, toSide);
+      // Gentle S-curve
+      if (Math.abs(sp.y - ep.y) < 15) {{
+        // Same row, use slight arc
+        const midX = (sp.x + ep.x)/2, arcY = sp.y - 35;
+        path.setAttribute('d', `M ${{sp.x}} ${{sp.y}} Q ${{midX}} ${{arcY}} ${{ep.x}} ${{ep.y}}`);
+        labelX = midX; labelY = arcY;
+      }} else {{
+        const cy1 = sp.y + (ep.y - sp.y)*0.3;
+        const cy2 = sp.y + (ep.y - sp.y)*0.7;
+        path.setAttribute('d', `M ${{sp.x}} ${{sp.y}} C ${{sp.x}} ${{cy1}} ${{ep.x}} ${{cy2}} ${{ep.x}} ${{ep.y}}`);
+        labelX = (sp.x+ep.x)/2; labelY = (sp.y+ep.y)/2;
+      }}
+    }}
+    // Has obstacles: route BELOW all nodes with staggered Y
+    else {{
+      const routeY = baseRouteY + (_routeCounter * 22);
+      _routeCounter++;
+      // X nudge to separate vertical segments
+      const nudge = (_routeCounter % 2 === 0 ? 5 : -5) * Math.ceil(_routeCounter / 2);
+
+      const exitPt = borderExit(fromBox, 'bottom');
+      const enterPt = borderExit(toBox, 'bottom');
+      const ex = exitPt.x + nudge, enx = enterPt.x + nudge;
+
+      const pts = [
+        exitPt,
+        {{ x: ex, y: routeY }},
+        {{ x: enx, y: routeY }},
+        enterPt
+      ];
+
+      // Build path with rounded corners
+      let d = `M ${{pts[0].x}} ${{pts[0].y}}`;
+      const radius = 12;
+      for (let i = 1; i < pts.length - 1; i++) {{
+        const prev = pts[i-1], curr = pts[i], next = pts[i+1];
+        const dx1 = curr.x - prev.x, dy1 = curr.y - prev.y;
+        const dx2 = next.x - curr.x, dy2 = next.y - curr.y;
+        const len1 = Math.sqrt(dx1*dx1 + dy1*dy1);
+        const len2 = Math.sqrt(dx2*dx2 + dy2*dy2);
+        if (len1 < 1 || len2 < 1) {{ d += ` L ${{curr.x}} ${{curr.y}}`; continue; }}
+        const r = Math.min(radius, len1/2, len2/2);
+        const bx = curr.x - (dx1/len1)*r, by = curr.y - (dy1/len1)*r;
+        const ax = curr.x + (dx2/len2)*r, ay = curr.y + (dy2/len2)*r;
+        d += ` L ${{bx}} ${{by}} Q ${{curr.x}} ${{curr.y}} ${{ax}} ${{ay}}`;
+      }}
+      d += ` L ${{pts[pts.length-1].x}} ${{pts[pts.length-1].y}}`;
+      path.setAttribute('d', d);
+
+      labelX = (pts[1].x + pts[2].x) / 2;
+      labelY = pts[1].y + 14;
+    }}
+
+    path.setAttribute('fill', 'none');
+    path.setAttribute('stroke', edge.color);
+    path.setAttribute('stroke-width', isPeEdge ? '1.5' : '2');
+    path.setAttribute('stroke-dasharray', edge.dash || '0');
+    path.setAttribute('marker-end', `url(#${{markerFor(edge.type)}})`);
+    path.setAttribute('opacity', '0.7');
+    root.appendChild(path);
+
+    if (edge.label) {{
+      const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      const r = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      const t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      const bw = edge.label.length * 5.5 + 12;
+      r.setAttribute('x', labelX-bw/2); r.setAttribute('y', labelY-8);
+      r.setAttribute('width', bw); r.setAttribute('height', 16);
+      r.setAttribute('rx', '4'); r.setAttribute('fill', 'white');
+      r.setAttribute('stroke', edge.color); r.setAttribute('stroke-width', '0.5');
+      r.setAttribute('opacity', '0.95');
+      t.setAttribute('x', labelX); t.setAttribute('y', labelY+4);
+      t.setAttribute('text-anchor', 'middle'); t.setAttribute('font-size', '9');
+      t.setAttribute('fill', '#605e5c'); t.setAttribute('font-family', 'Segoe UI, sans-serif');
+      t.textContent = edge.label;
+      g.appendChild(r); g.appendChild(t);
+      root.appendChild(g);
+    }}
+  }});
+
 }}
 
 function getSVGPoint(e) {{
   const svg = document.getElementById('canvas');
   const pt = svg.createSVGPoint();
   pt.x = e.clientX; pt.y = e.clientY;
-  const ctm = document.getElementById('diagram-root').getScreenCTM();
-  return pt.matrixTransform(ctm.inverse());
+  return pt.matrixTransform(document.getElementById('diagram-root').getScreenCTM().inverse());
 }}
 
 document.getElementById('canvas').addEventListener('mousemove', e => {{
   if (!dragging) return;
-  const svgPt = getSVGPoint(e);
-  positions[dragging].x = svgPt.x - dragOffX;
-  positions[dragging].y = svgPt.y - dragOffY;
+  const p = getSVGPoint(e);
+  positions[dragging].x = p.x - dragOffX;
+  positions[dragging].y = p.y - dragOffY;
   renderDiagram();
 }});
-document.addEventListener('mouseup', () => {{
-  dragging = null;
-}});
+document.addEventListener('mouseup', () => {{ dragging = null; }});
 
 // ── Pan & Zoom ──
 function applyTransform() {{
-  const root = document.getElementById('diagram-root');
-  root.setAttribute('transform', `translate(${{viewTransform.x}},${{viewTransform.y}}) scale(${{viewTransform.scale}})`);
+  document.getElementById('diagram-root').setAttribute('transform',
+    `translate(${{viewTransform.x}},${{viewTransform.y}}) scale(${{viewTransform.scale}})`);
+  document.getElementById('zoom-level').textContent = Math.round(viewTransform.scale * 100) + '%';
 }}
-
 function fitToScreen() {{
   const svg = document.getElementById('canvas');
   const root = document.getElementById('diagram-root');
-  // 임시로 변환 제거하여 원본 bbox 계산
   root.setAttribute('transform', '');
   const bbox = root.getBBox();
   if (!bbox.width || !bbox.height) return;
-  const w = svg.clientWidth || svg.getBoundingClientRect().width;
-  const h = svg.clientHeight || svg.getBoundingClientRect().height;
-  if (!w || !h) return;
-  const scaleX = (w - 80) / bbox.width;
-  const scaleY = (h - 100) / bbox.height;
-  const scale = Math.min(scaleX, scaleY, 1.5);
-  if (scale <= 0) return;
-  viewTransform.scale = scale;
-  viewTransform.x = (w - bbox.width * scale) / 2 - bbox.x * scale;
-  viewTransform.y = (h - bbox.height * scale) / 2 - bbox.y * scale;
+  const w = svg.clientWidth, h = svg.clientHeight;
+  const s = Math.min((w-60)/bbox.width, (h-60)/bbox.height, 1.5);
+  if (s <= 0) return;
+  viewTransform.scale = s;
+  viewTransform.x = (w - bbox.width*s)/2 - bbox.x*s;
+  viewTransform.y = (h - bbox.height*s)/2 - bbox.y*s;
   applyTransform();
 }}
+function zoomIn() {{ viewTransform.scale *= 1.25; applyTransform(); }}
+function zoomOut() {{ viewTransform.scale *= 0.8; applyTransform(); }}
+function resetZoom() {{ viewTransform = {{x:0,y:0,scale:1}}; applyTransform(); }}
 
-function zoomIn() {{
-  viewTransform.scale *= 1.25;
-  applyTransform();
-}}
-function zoomOut() {{
-  viewTransform.scale *= 0.8;
-  applyTransform();
-}}
-function resetZoom() {{
-  viewTransform = {{ x: 0, y: 0, scale: 1 }};
-  applyTransform();
-}}
-
-// 마우스 휠로 줌
 document.getElementById('canvas').addEventListener('wheel', e => {{
   e.preventDefault();
-  const factor = e.deltaY < 0 ? 1.1 : 0.9;
-  // 마우스 위치 기준으로 줌
-  const svg = document.getElementById('canvas');
-  const rect = svg.getBoundingClientRect();
-  const mx = e.clientX - rect.left;
-  const my = e.clientY - rect.top;
-  const oldScale = viewTransform.scale;
-  const newScale = oldScale * factor;
-  // 마우스 위치를 기준점으로 유지
-  viewTransform.x = mx - (mx - viewTransform.x) * (newScale / oldScale);
-  viewTransform.y = my - (my - viewTransform.y) * (newScale / oldScale);
-  viewTransform.scale = newScale;
+  const f = e.deltaY < 0 ? 1.1 : 0.9;
+  const rect = document.getElementById('canvas').getBoundingClientRect();
+  const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+  const os = viewTransform.scale, ns = os * f;
+  viewTransform.x = mx - (mx - viewTransform.x) * (ns/os);
+  viewTransform.y = my - (my - viewTransform.y) * (ns/os);
+  viewTransform.scale = ns;
   applyTransform();
 }}, {{ passive: false }});
 
-// 빈 공간 드래그로 캔버스 이동 (pan)
 document.getElementById('canvas').addEventListener('mousedown', e => {{
-  // 노드 위가 아닌 빈 공간 클릭 시에만 pan
   if (e.target.closest('.node')) return;
   isPanning = true;
-  panStartX = e.clientX;
-  panStartY = e.clientY;
-  panStartTx = viewTransform.x;
-  panStartTy = viewTransform.y;
+  panSX = e.clientX; panSY = e.clientY;
+  panSTx = viewTransform.x; panSTy = viewTransform.y;
   document.getElementById('canvas').style.cursor = 'grabbing';
   e.preventDefault();
 }});
-
 document.addEventListener('mousemove', e => {{
   if (isPanning) {{
-    viewTransform.x = panStartTx + (e.clientX - panStartX);
-    viewTransform.y = panStartTy + (e.clientY - panStartY);
+    viewTransform.x = panSTx + (e.clientX - panSX);
+    viewTransform.y = panSTy + (e.clientY - panSY);
     applyTransform();
   }}
 }});
-
 document.addEventListener('mouseup', () => {{
-  if (isPanning) {{
-    isPanning = false;
-    document.getElementById('canvas').style.cursor = '';
-  }}
+  if (isPanning) {{ isPanning = false; document.getElementById('canvas').style.cursor = ''; }}
 }});
 
-// Build sidebar
+// ── Sidebar ──
 function buildSidebar() {{
   const list = document.getElementById('service-list');
   const byCat = {{}};
-  NODES_DATA.forEach(n => {{
-    if (!byCat[n.category]) byCat[n.category] = [];
-    byCat[n.category].push(n);
-  }});
-
+  NODES.forEach(n => {{ if (!byCat[n.category]) byCat[n.category] = []; byCat[n.category].push(n); }});
   Object.entries(byCat).forEach(([cat, nodes]) => {{
-    const catDiv = document.createElement('div');
-    catDiv.style.cssText = 'padding:4px 12px 2px; font-size:11px; color:#888; font-weight:600; text-transform:uppercase; letter-spacing:0.5px;';
-    catDiv.textContent = cat;
-    list.appendChild(catDiv);
-
+    const cd = document.createElement('div');
+    cd.className = 'cat-label'; cd.textContent = cat;
+    list.appendChild(cd);
     nodes.forEach(node => {{
       const card = document.createElement('div');
-      card.className = 'service-card';
-      card.id = 'card-' + node.id;
-      card.style.borderLeftColor = node.color;
-      card.style.borderLeftWidth = '3px';
-
+      card.className = 'service-card'; card.id = 'card-' + node.id;
       card.innerHTML = `
-        <div class="service-card-header" style="background:${{node.bg}}">
-          <div class="service-icon">${{node.icon}}</div>
+        <div class="service-card-header">
+          <div class="sc-icon"><svg viewBox="0 0 48 48">${{node.icon_svg}}</svg></div>
           <div>
             <div class="service-name">${{node.name}}</div>
-            <div class="service-sku">${{node.sku || ''}}</div>
+            <div class="service-sku">${{node.sku || node.type}}</div>
           </div>
-          ${{node.private ? '<span class="private-badge">🔒 Private</span>' : ''}}
+          ${{node.private ? '<span class="private-badge">Private</span>' : ''}}
         </div>
-        ${{node.details.length > 0 ? `
-        <div class="service-card-body">
-          ${{node.details.map(d => `<div class="service-detail">${{d}}</div>`).join('')}}
-        </div>` : ''}}
+        ${{node.details.length > 0 ? `<div class="service-card-body">${{node.details.map(d => `<div class="service-detail">${{d}}</div>`).join('')}}</div>` : ''}}
       `;
       card.addEventListener('click', () => {{
-        document.querySelectorAll('.service-card').forEach(c => c.classList.remove('selected'));
-        card.classList.add('selected');
-        // Highlight node in canvas
-        const nodeEl = document.querySelector(`[data-id="${{node.id}}"] rect`);
-        if (nodeEl) {{
-          nodeEl.style.strokeWidth = '3';
-          setTimeout(() => nodeEl.style.strokeWidth = '1.5', 1500);
-        }}
+        selectNode(node.id);
       }});
       list.appendChild(card);
     }});
   }});
 }}
 
-// Init
 renderDiagram();
 buildSidebar();
 setTimeout(fitToScreen, 100);
