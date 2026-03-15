@@ -266,43 +266,20 @@ az group list --output table
 
 ## PHASE 3: Bicep 리뷰 에이전트
 
-생성된 Bicep을 `agents/bicep-reviewer.md` 지침에 따라 검토한다.
-(가능하면 Phase 2와 병렬로 진행하거나, Phase 2 완료 후 바로 실행)
+`agents/bicep-reviewer.md` 지침에 따라 검토한다.
 
-**리뷰 체크리스트:**
+**⚠️ 핵심: 눈으로만 보고 "통과"라고 하지 않는다. 반드시 `az bicep build`를 실행하여 실제 컴파일 결과를 확인한다.**
 
-**보안 (Critical)**
-- [ ] 모든 서비스 `publicNetworkAccess: 'Disabled'` 또는 `'disabled'`
-- [ ] Key Vault `enableRbacAuthorization: true`, `enablePurgeProtection: true`
-- [ ] Storage `allowBlobPublicAccess: false`, `minimumTlsVersion: 'TLS1_2'`
-- [ ] Private DNS Zone VNet Link `registrationEnabled: false`
-
-**완전성 (High)**
-- [ ] ADLS Gen2 `isHnsEnabled: true` 설정됨
-- [ ] Private Endpoint마다 DNS Zone Group 생성됨
-- [ ] pe-subnet `privateEndpointNetworkPolicies: 'Disabled'` 설정됨
-- [ ] 서비스별 리소스 타입과 kind 값이 `references/ai-data-services.md`와 일치
-- [ ] 모든 apiVersion이 MS Docs 기준 최신 stable 버전
-
-**모범사례 (Medium)**
-- [ ] `uniqueString()` 사용으로 리소스명 충돌 방지
-- [ ] `dependsOn` 또는 참조로 배포 순서 보장
-- [ ] 파라미터 파일에 민감한 값 없음 (Key Vault 참조 사용)
-
-**리뷰 결과 형식:**
+```bash
+az bicep build --file main.bicep 2>&1
 ```
-## 코드 리뷰 결과
 
-✅ 통과: 12개 항목
-⚠️ 경고: 2개 항목
-❌ 수정 필요: 0개 항목
+1. 컴파일 에러/경고 → 수정
+2. 체크리스트 검토 → 수정
+3. 재컴파일로 확인
+4. 결과 보고 (컴파일 결과 포함)
 
-### 경고 사항
-- [경고 내용] → [권장 수정 방법]
-
-### 수정 완료
-(수정이 필요한 항목은 자동으로 수정 후 알림)
-```
+상세 체크리스트와 수정 절차는 `agents/bicep-reviewer.md` 참조.
 
 리뷰 완료 후 Phase 4로 전환하기 전 사용자에게 결과를 보여준다.
 
