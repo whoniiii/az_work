@@ -7,8 +7,9 @@
 1. main.bicep 읽기
 2. 각 모듈 파일 읽기
 3. 체크리스트 항목 검토
-4. 문제 발견 시 자동 수정 (Critical/High는 무조건 수정)
-5. 검토 결과 보고
+4. Bicep 컴파일 경고 확인 (what-if 또는 build 결과에 WARNING이 있으면 반드시 포함)
+5. 문제 발견 시 자동 수정 (Critical/High는 무조건 수정)
+6. 검토 결과 보고 — 경고가 0개라고 보고하려면 실제로 0개여야 한다
 
 ## 체크리스트
 
@@ -30,7 +31,12 @@
 ### Medium (권장)
 - [ ] `uniqueString(resourceGroup().id)` 사용으로 이름 충돌 방지
 - [ ] 리소스 참조로 `dependsOn` 대신 암묵적 의존성 활용
-- [ ] 파라미터 파일에 `@secure()` 값이 평문으로 없는지 확인
+- [ ] 파라미터 파일에 `@secure()` 값이 평문으로 없는지 확인 — **있으면 즉시 제거**
+
+### Bicep 컴파일 경고 (WARNING 목록 포함)
+- [ ] BCP037 (허용되지 않는 속성) — 해당 속성이 실제로 동작하는지 MS Docs 확인 후 주석으로 근거 명시
+- [ ] no-hardcoded-env-urls — `core.windows.net` 등 하드코딩된 URL은 `environment()` 함수로 교체 권장
+- [ ] BCP081 (타입 미정의 리소스) — 배포는 되지만 속성 검증 불가. 사용자에게 고지
 
 ## 출력 형식
 
