@@ -199,12 +199,28 @@ DIAGRAM_SCRIPT=$(find .claude/skills/azure-arch-builder -name "generate_html_dia
 if [ -z "$DIAGRAM_SCRIPT" ]; then
   DIAGRAM_SCRIPT=$(find ~/.claude/skills/azure-arch-builder -name "generate_html_diagram.py" 2>/dev/null | head -1)
 fi
+OUTPUT_FILE="<project-name>/01_arch_diagram_draft.html"
 python "$DIAGRAM_SCRIPT" \
   --services '<JSON>' \
   --connections '<JSON>' \
   --title "아키텍처 제목" \
-  --output "<project-name>/01_arch_diagram_draft.html"
+  --output "$OUTPUT_FILE"
+
+# 생성 후 자동으로 브라우저에서 열기 (OS 자동 감지)
+if command -v open &>/dev/null; then
+  open "$OUTPUT_FILE"                        # macOS
+elif command -v wslview &>/dev/null; then
+  wslview "$OUTPUT_FILE"                     # WSL2 (wslu 패키지)
+elif command -v explorer.exe &>/dev/null; then
+  explorer.exe "$(wslpath -w "$OUTPUT_FILE" 2>/dev/null || echo "$OUTPUT_FILE")"  # WSL2 fallback
+elif command -v xdg-open &>/dev/null; then
+  xdg-open "$OUTPUT_FILE"                   # Linux
+elif command -v start &>/dev/null; then
+  start "$OUTPUT_FILE"                       # Git Bash on Windows
+fi
 ```
+
+> **다이어그램 자동 오픈**: 다이어그램 HTML을 생성하면 반드시 브라우저에서 자동으로 연다. OS별 명령을 자동 감지한다: `open` (macOS), `wslview` 또는 `explorer.exe` (WSL2), `xdg-open` (Linux), `start` (Windows/Git Bash). 모든 다이어그램 생성 시점(01 초안, 02 프리뷰, 03 결과)에 동일하게 적용한다.
 
 **services JSON 형식:**
 
