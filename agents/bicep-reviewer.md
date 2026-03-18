@@ -31,6 +31,7 @@ az bicep build --file main.bicep 2>&1
 컴파일 통과 후 아래 항목을 검토한다. 전체 gotchas는 `references/service-gotchas.md` 참조.
 
 #### Critical (반드시 수정)
+- [ ] Microsoft Foundry `customSubDomainName` 설정 존재 — **생성 후 변경 불가, 누락 시 리소스 삭제 후 재생성 필요**
 - [ ] Microsoft Foundry 사용 시 **Foundry Project (`accounts/projects`) 반드시 존재** — 없으면 포털에서 사용 불가
 - [ ] Microsoft Foundry `identity: { type: 'SystemAssigned' }` — 없으면 Project 생성 실패
 - [ ] `publicNetworkAccess: 'Disabled'` — PE 사용하는 모든 서비스

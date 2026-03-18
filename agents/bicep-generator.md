@@ -109,6 +109,7 @@ Phase 1 완료 시 다음 정보가 확정되어 있어야 한다:
 
 ### `ai.bicep`
 - **Microsoft Foundry resource** (`Microsoft.CognitiveServices/accounts`, `kind: 'AIServices'`) — 최상위 AI 리소스
+  - `customSubDomainName: foundryName` 필수 — **생성 후 변경 불가. 누락 시 리소스 삭제 후 재생성 필요**
   - `identity: { type: 'SystemAssigned' }` 필수
   - `allowProjectManagement: true` 필수
   - 모델 배포 (`Microsoft.CognitiveServices/accounts/deployments`) — Foundry resource 레벨에서 수행
@@ -179,11 +180,13 @@ param adminPassword string  // main.bicepparam에 평문 값 넣지 않음
 ### 한국어 주석
 ```bicep
 // Microsoft Foundry resource — kind: 'AIServices'
+// customSubDomainName: 필수, 글로벌 고유값. 생성 후 변경 불가 — 누락 시 리소스 삭제 후 재생성
 // allowProjectManagement: true 없으면 Foundry Project 생성 불가
 // apiVersion은 Step 0에서 fetch한 최신 버전으로 대체
 resource foundry 'Microsoft.CognitiveServices/accounts@<Step 0에서 fetch한 버전>' = {
   kind: 'AIServices'
   properties: {
+    customSubDomainName: foundryName
     allowProjectManagement: true
     ...
   }
@@ -283,6 +286,7 @@ param projectPrefix = '<프로젝트 접두사>'
 | PE 서브넷 | 정책 미설정 | `privateEndpointNetworkPolicies: 'Disabled'` |
 | PE 구성 | PE만 생성 | PE + DNS Zone + VNet Link + DNS Zone Group |
 | Foundry | `kind: 'OpenAI'` | `kind: 'AIServices'` + `allowProjectManagement: true` |
+| Foundry | `customSubDomainName` 누락 | `customSubDomainName: foundryName` — 생성 후 변경 불가 |
 | Foundry Project | 미생성 | Foundry resource와 반드시 세트 |
 | Hub 사용 | 일반 AI에 사용 | 사용자 명시 요청 또는 ML/오픈소스 필요 시에만 |
 | 공개 네트워크 | 미설정 | `publicNetworkAccess: 'Disabled'` |
