@@ -54,7 +54,7 @@ Azure 인프라 관련 요청을 하면 스킬이 자동으로 발동됩니다. 
 
 ## 지원 서비스
 
-Azure AI/Data 관련 서비스를 자유롭게 조합할 수 있습니다. 서비스별 상세 정보는 `references/ai-data-services.md`를 참조합니다.
+Azure AI/Data 관련 서비스를 자유롭게 조합할 수 있습니다. v1 범위 밖 서비스도 MS Docs 기반 fallback으로 대응합니다. 서비스별 상세 정보는 `references/domain-packs/ai-data.md`, 필수 속성과 PE 매핑은 `references/service-gotchas.md`를 참조합니다.
 
 모든 구성에 **Private Endpoint + Private DNS Zone** 자동 적용 가능.
 

@@ -386,72 +386,172 @@ const SVC_W = 120, SVC_H = 100;  // service node (icon above, name below)
 const PE_W = 90, PE_H = 70;      // pe node (smaller)
 const GAP = 40;
 
-// ── Layout: WAF style (top-down) ──
-// Row 0: VNet boundary (drawn around private nodes)
-//   Inside VNet: PE subnet row
-// Row 1: Main services by category
-// External/Monitor: outside VNet
+// ── Layout: Category Group Box style ──
+// Each category gets a labeled box, services arranged in a grid inside.
+// Groups arranged in 2D: main service groups on top, bottom groups below.
+// PE nodes in a separate PE subnet group.
 
 const positions = {{}};
 const peNodes = NODES.filter(n => n.type === 'pe');
 const mainNodes = NODES.filter(n => n.type !== 'pe');
 
-// Categorize main nodes
-const catOrder = ['External', 'AI', 'Data', 'Security', 'Compute', 'Monitor', 'Network', 'Azure'];
+// Category grouping
+const bottomCategories = ['Network', 'External', 'Monitor'];
+const catOrder = ['AI', 'Data', 'Security', 'Compute', 'Azure'];
+
 const catGroups = {{}};
 mainNodes.forEach(n => {{
-  if (!catGroups[n.category]) catGroups[n.category] = [];
-  catGroups[n.category].push(n);
+  const cat = n.category || 'Azure';
+  if (!catGroups[cat]) catGroups[cat] = [];
+  catGroups[cat].push(n);
 }});
 
-// Place main services in a row (all private services at same y)
-const privateMainNodes = mainNodes.filter(n => n.private);
-const externalNodes = mainNodes.filter(n => !n.private);
+// Group box layout parameters
+const GROUP_PAD = 20;         // padding inside group box
+const GROUP_TITLE_H = 28;    // height for group title bar
+const GROUP_GAP = 30;        // gap between group boxes
+const COLS_PER_GROUP = 3;    // max columns in a group grid
+const CELL_W = SVC_W + 16;   // cell width in grid
+const CELL_H = SVC_H + 24;   // cell height in grid
 
-// Services row
-const SERVICES_Y = 280;
-let sx = 60;
-catOrder.forEach(cat => {{
-  const nodes = (catGroups[cat] || []).filter(n => n.private);
-  nodes.forEach(n => {{
-    positions[n.id] = {{ x: sx, y: SERVICES_Y }};
-    sx += SVC_W + GAP;
-  }});
-  if (nodes.length > 0) sx += 20; // extra gap between categories
-}});
+// Calculate group box dimensions
+function groupDimensions(nodeCount) {{
+  const cols = Math.min(nodeCount, COLS_PER_GROUP);
+  const rows = Math.ceil(nodeCount / COLS_PER_GROUP);
+  const w = cols * CELL_W + GROUP_PAD * 2;
+  const h = rows * CELL_H + GROUP_PAD + GROUP_TITLE_H;
+  return {{ w, h, cols, rows }};
+}}
 
-// External nodes above
-let ex = 60;
-catOrder.forEach(cat => {{
-  const nodes = (catGroups[cat] || []).filter(n => !n.private);
-  nodes.forEach(n => {{
-    positions[n.id] = {{ x: ex, y: SERVICES_Y + SVC_H + 80 }};
-    ex += SVC_W + GAP;
-  }});
-}});
+// Store group box positions for rendering
+const groupBoxes = [];
 
-// PE nodes: in a row above services (PE subnet area)
-const PE_Y = 120;
-// Map PE to parent service via edges
-peNodes.forEach((pe, i) => {{
-  const edge = EDGES.find(e => e.from === pe.id || e.to === pe.id);
-  const parentId = edge ? (edge.from === pe.id ? edge.to : edge.from) : null;
-  const parentPos = parentId ? positions[parentId] : null;
-  if (parentPos) {{
-    positions[pe.id] = {{ x: parentPos.x + (SVC_W - PE_W) / 2, y: PE_Y }};
-  }} else {{
-    positions[pe.id] = {{ x: 60 + i * (PE_W + 30), y: PE_Y }};
+// ── Place main service groups in a flowing grid ──
+const serviceGroups = catOrder.filter(cat => catGroups[cat] && catGroups[cat].length > 0
+  && !bottomCategories.includes(cat));
+
+let gx = 60, gy = 140;  // starting position for service groups
+let rowMaxH = 0;
+let rowStartX = 60;
+const MAX_ROW_W = Math.max(1200, serviceGroups.length * 300);  // rough max width before wrapping
+
+serviceGroups.forEach(cat => {{
+  const nodes = catGroups[cat];
+  const dim = groupDimensions(nodes.length);
+
+  // Wrap to next row if too wide
+  if (gx + dim.w > rowStartX + MAX_ROW_W && gx > rowStartX) {{
+    gx = rowStartX;
+    gy += rowMaxH + GROUP_GAP;
+    rowMaxH = 0;
   }}
+
+  // Place nodes inside group grid
+  nodes.forEach((n, i) => {{
+    const col = i % dim.cols;
+    const row = Math.floor(i / dim.cols);
+    positions[n.id] = {{
+      x: gx + GROUP_PAD + col * CELL_W + (CELL_W - SVC_W) / 2,
+      y: gy + GROUP_TITLE_H + row * CELL_H + (CELL_H - SVC_H) / 2
+    }};
+  }});
+
+  groupBoxes.push({{
+    cat, x: gx, y: gy, w: dim.w, h: dim.h,
+    color: nodes[0]?.color || '#0078D4'
+  }});
+
+  gx += dim.w + GROUP_GAP;
+  rowMaxH = Math.max(rowMaxH, dim.h);
 }});
 
-// Resolve PE overlaps
-const pePositions = peNodes.map(pe => positions[pe.id]).filter(Boolean);
-pePositions.sort((a, b) => a.x - b.x);
-for (let i = 1; i < pePositions.length; i++) {{
-  if (pePositions[i].x < pePositions[i-1].x + PE_W + 15) {{
-    pePositions[i].x = pePositions[i-1].x + PE_W + 15;
+// ── Place bottom groups (Network, External, Monitor) ──
+const bottomGroupY = gy + rowMaxH + GROUP_GAP + 20;
+let bgx = 60;
+bottomCategories.forEach(cat => {{
+  const nodes = catGroups[cat];
+  if (!nodes || nodes.length === 0) return;
+  const dim = groupDimensions(nodes.length);
+
+  nodes.forEach((n, i) => {{
+    const col = i % dim.cols;
+    const row = Math.floor(i / dim.cols);
+    positions[n.id] = {{
+      x: bgx + GROUP_PAD + col * CELL_W + (CELL_W - SVC_W) / 2,
+      y: bottomGroupY + GROUP_TITLE_H + row * CELL_H + (CELL_H - SVC_H) / 2
+    }};
+  }});
+
+  groupBoxes.push({{
+    cat, x: bgx, y: bottomGroupY, w: dim.w, h: dim.h,
+    color: nodes[0]?.color || '#666',
+    isBottom: true
+  }});
+
+  bgx += dim.w + GROUP_GAP;
+}});
+
+// ── PE nodes: in PE subnet group above service groups ──
+const PE_Y = 40;
+if (peNodes.length > 0) {{
+  const peDim = groupDimensions(peNodes.length);
+  // Use wider PE layout (more columns)
+  const peCols = Math.min(peNodes.length, 6);
+  const peRows = Math.ceil(peNodes.length / peCols);
+  const peCellW = PE_W + 16;
+  const peCellH = PE_H + 12;
+  const peBoxW = peCols * peCellW + GROUP_PAD * 2;
+  const peBoxH = peRows * peCellH + GROUP_PAD + GROUP_TITLE_H;
+
+  peNodes.forEach((pe, i) => {{
+    const col = i % peCols;
+    const row = Math.floor(i / peCols);
+    positions[pe.id] = {{
+      x: 60 + GROUP_PAD + col * peCellW + (peCellW - PE_W) / 2,
+      y: PE_Y + GROUP_TITLE_H + row * peCellH + (peCellH - PE_H) / 2
+    }};
+  }});
+
+  groupBoxes.push({{
+    cat: 'Private Endpoints', x: 60, y: PE_Y, w: peBoxW, h: peBoxH,
+    color: '#5C2D91', isPE: true
+  }});
+
+  // Shift service groups down if PE group exists
+  const peBottom = PE_Y + peBoxH + GROUP_GAP;
+  if (peBottom > 140) {{
+    const shift = peBottom - 140;
+    // Shift all non-PE positions down
+    NODES.forEach(n => {{
+      if (n.type !== 'pe' && positions[n.id]) {{
+        positions[n.id].y += shift;
+      }}
+    }});
+    // Shift group boxes down
+    groupBoxes.forEach(gb => {{
+      if (!gb.isPE) gb.y += shift;
+    }});
   }}
 }}
+
+// ── Node → Group mapping (for edge routing) ──
+const nodeGroupMap = {{}};
+groupBoxes.forEach((gb, idx) => {{
+  NODES.forEach(n => {{
+    const pos = positions[n.id];
+    if (!pos) return;
+    const nw = n.type === 'pe' ? PE_W : SVC_W;
+    const nh = n.type === 'pe' ? PE_H : SVC_H;
+    const ncx = pos.x + nw / 2;
+    const ncy = pos.y + nh / 2;
+    if (ncx >= gb.x && ncx <= gb.x + gb.w && ncy >= gb.y && ncy <= gb.y + gb.h) {{
+      nodeGroupMap[n.id] = idx;
+    }}
+  }});
+}});
+// Routing corridor margins (outside all group boxes)
+const _rightMarginBase = groupBoxes.length > 0 ? Math.max(...groupBoxes.map(g => g.x + g.w)) + 40 : 800;
+const _leftMarginBase = groupBoxes.length > 0 ? Math.min(...groupBoxes.map(g => g.x)) - 40 : -40;
 
 // ── State ──
 let dragging = null, dragOffX = 0, dragOffY = 0;
@@ -484,28 +584,24 @@ function renderDiagram() {{
   root.innerHTML = '';
   _routeCounter = 0;  // reset stagger counter each render
 
-  // ── Draw VNet boundary ──
-  const pvt = NODES.filter(n => n.private || n.type === 'pe');
-  if (pvt.length > 0) {{
-    const allX = pvt.map(n => positions[n.id]?.x).filter(x => x !== undefined);
-    const allY = pvt.map(n => positions[n.id]?.y).filter(y => y !== undefined);
-    if (allX.length > 0) {{
-      const pad = 36;
-      const vx = Math.min(...allX) - pad;
-      const vy = Math.min(...allY) - 50;
-      const vw = Math.max(...allX) - Math.min(...allX) + SVC_W + pad * 2;
-      const vh = Math.max(...allY) - Math.min(...allY) + SVC_H + pad + 50;
+  // ── Draw VNet boundary around non-bottom groups ──
+  const privateGroups = groupBoxes.filter(gb => !gb.isBottom);
+  if (privateGroups.length > 0) {{
+    const hasPrivateNodes = NODES.some(n => n.private && n.type !== 'pe');
+    if (hasPrivateNodes) {{
+      const vx = Math.min(...privateGroups.map(g => g.x)) - 16;
+      const vy = Math.min(...privateGroups.map(g => g.y)) - 36;
+      const vRight = Math.max(...privateGroups.map(g => g.x + g.w)) + 16;
+      const vBottom = Math.max(...privateGroups.map(g => g.y + g.h)) + 16;
 
-      // VNet box
       const vr = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
       vr.setAttribute('x', vx); vr.setAttribute('y', vy);
-      vr.setAttribute('width', vw); vr.setAttribute('height', vh);
+      vr.setAttribute('width', vRight - vx); vr.setAttribute('height', vBottom - vy);
       vr.setAttribute('fill', '#f8f7ff'); vr.setAttribute('stroke', '#5C2D91');
       vr.setAttribute('stroke-width', '2'); vr.setAttribute('stroke-dasharray', '8,4');
       vr.setAttribute('rx', '12');
       root.appendChild(vr);
 
-      // VNet icon + label
       const vl = document.createElementNS('http://www.w3.org/2000/svg', 'g');
       vl.innerHTML = `<svg x="${{vx + 10}}" y="${{vy + 6}}" width="20" height="20" viewBox="0 0 48 48">
         <rect x="6" y="6" width="36" height="36" rx="4" fill="none" stroke="#5C2D91" stroke-width="3"/>
@@ -513,36 +609,51 @@ function renderDiagram() {{
       </svg>
       <text x="${{vx + 34}}" y="${{vy + 20}}" font-size="12" font-weight="600" fill="#5C2D91" font-family="Segoe UI, sans-serif">Virtual Network</text>`;
       root.appendChild(vl);
-
-      // PE subnet box
-      if (peNodes.length > 0) {{
-        const peXs = peNodes.map(pe => positions[pe.id]?.x).filter(x => x !== undefined);
-        const peYs = peNodes.map(pe => positions[pe.id]?.y).filter(y => y !== undefined);
-        if (peXs.length > 0) {{
-          const sp = 20;
-          const psx = Math.min(...peXs) - sp;
-          const psy = Math.min(...peYs) - 28;
-          const psw = Math.max(...peXs) - Math.min(...peXs) + PE_W + sp * 2;
-          const psh = Math.max(...peYs) - Math.min(...peYs) + PE_H + sp + 28;
-
-          const sr = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-          sr.setAttribute('x', psx); sr.setAttribute('y', psy);
-          sr.setAttribute('width', psw); sr.setAttribute('height', psh);
-          sr.setAttribute('fill', '#f3eef9'); sr.setAttribute('stroke', '#d4b8ff');
-          sr.setAttribute('stroke-width', '1'); sr.setAttribute('rx', '8');
-          sr.setAttribute('stroke-dasharray', '4,4');
-          root.appendChild(sr);
-
-          const sl = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-          sl.setAttribute('x', psx + 10); sl.setAttribute('y', psy + 16);
-          sl.setAttribute('font-size', '10'); sl.setAttribute('fill', '#7c3aed');
-          sl.setAttribute('font-weight', '600'); sl.setAttribute('font-family', 'Segoe UI, sans-serif');
-          sl.textContent = 'Private endpoint subnet';
-          root.appendChild(sl);
-        }}
-      }}
     }}
   }}
+
+  // ── Draw category group boxes ──
+  groupBoxes.forEach(gb => {{
+    const gr = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    gr.setAttribute('x', gb.x); gr.setAttribute('y', gb.y);
+    gr.setAttribute('width', gb.w); gr.setAttribute('height', gb.h);
+    gr.setAttribute('rx', '8');
+    gr.setAttribute('fill', gb.isPE ? '#f3eef9' : 'white');
+    gr.setAttribute('stroke', gb.isPE ? '#d4b8ff' : '#e1dfdd');
+    gr.setAttribute('stroke-width', '1');
+    if (gb.isPE) gr.setAttribute('stroke-dasharray', '4,4');
+    root.appendChild(gr);
+
+    // Title bar
+    const titleBar = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    titleBar.setAttribute('x', gb.x); titleBar.setAttribute('y', gb.y);
+    titleBar.setAttribute('width', gb.w); titleBar.setAttribute('height', GROUP_TITLE_H);
+    titleBar.setAttribute('rx', '8');
+    titleBar.setAttribute('fill', gb.color);
+    titleBar.setAttribute('opacity', '0.1');
+    root.appendChild(titleBar);
+    // Bottom corners of title bar (square)
+    const titleFill = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    titleFill.setAttribute('x', gb.x); titleFill.setAttribute('y', gb.y + GROUP_TITLE_H - 8);
+    titleFill.setAttribute('width', gb.w); titleFill.setAttribute('height', '8');
+    titleFill.setAttribute('fill', gb.color); titleFill.setAttribute('opacity', '0.1');
+    root.appendChild(titleFill);
+
+    // Color accent line
+    const accent = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    accent.setAttribute('x', gb.x); accent.setAttribute('y', gb.y);
+    accent.setAttribute('width', gb.w); accent.setAttribute('height', '3');
+    accent.setAttribute('rx', '8'); accent.setAttribute('fill', gb.color);
+    root.appendChild(accent);
+
+    // Group label
+    const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    label.setAttribute('x', gb.x + 12); label.setAttribute('y', gb.y + 18);
+    label.setAttribute('font-size', '11'); label.setAttribute('font-weight', '600');
+    label.setAttribute('fill', gb.color); label.setAttribute('font-family', 'Segoe UI, sans-serif');
+    label.textContent = gb.cat;
+    root.appendChild(label);
+  }});
 
   // ── Edge routing (obstacle-free) ──
   // Compute global bounds: the absolute bottom of ALL nodes
@@ -605,7 +716,158 @@ function renderDiagram() {{
     if (side === 'right') return {{ x: box.x + box.w, y: box.cy }};
   }}
 
-  // ── Nodes (rendered first, edges on top) ──
+  // Check if a line segment hits any group box (for edge routing)
+  function hitsGroupBox(x1, y1, x2, y2, skipGroupIndices) {{
+    for (let gi = 0; gi < groupBoxes.length; gi++) {{
+      if (skipGroupIndices.includes(gi)) continue;
+      const gb = groupBoxes[gi];
+      const pad = 4;
+      const left = gb.x - pad, right = gb.x + gb.w + pad;
+      const top = gb.y - pad, bottom = gb.y + gb.h + pad;
+      const dx = x2 - x1, dy = y2 - y1;
+      let tmin = 0, tmax = 1;
+      const edges = [[-dx, x1 - left], [dx, right - x1], [-dy, y1 - top], [dy, bottom - y1]];
+      let hit = true;
+      for (const [p, q] of edges) {{
+        if (Math.abs(p) < 0.001) {{ if (q < 0) {{ hit = false; break; }} }}
+        else {{
+          const t = q / p;
+          if (p < 0) {{ if (t > tmin) tmin = t; }}
+          else {{ if (t < tmax) tmax = t; }}
+          if (tmin > tmax) {{ hit = false; break; }}
+        }}
+      }}
+      if (hit && tmin < tmax) return true;
+    }}
+    return false;
+  }}
+
+  // Find gap between adjacent groups (same row)
+  function findGapBetween(gi1, gi2) {{
+    if (gi1 < 0 || gi2 < 0) return null;
+    const g1 = groupBoxes[gi1], g2 = groupBoxes[gi2];
+    // Same row: Y ranges overlap
+    const yOverlap = g1.y < g2.y + g2.h && g2.y < g1.y + g1.h;
+    if (!yOverlap) return null;
+    // Gap between them
+    if (g1.x + g1.w < g2.x) return {{ x: (g1.x + g1.w + g2.x) / 2 }};
+    if (g2.x + g2.w < g1.x) return {{ x: (g2.x + g2.w + g1.x) / 2 }};
+    return null;
+  }}
+
+  // Build orthogonal path with rounded corners
+  function buildOrthoPath(pts) {{
+    let d = `M ${{pts[0].x}} ${{pts[0].y}}`;
+    const radius = 6;
+    for (let i = 1; i < pts.length - 1; i++) {{
+      const prev = pts[i-1], curr = pts[i], next = pts[i+1];
+      const dx1 = curr.x - prev.x, dy1 = curr.y - prev.y;
+      const dx2 = next.x - curr.x, dy2 = next.y - curr.y;
+      const len1 = Math.sqrt(dx1*dx1 + dy1*dy1);
+      const len2 = Math.sqrt(dx2*dx2 + dy2*dy2);
+      if (len1 < 1 || len2 < 1) {{ d += ` L ${{curr.x}} ${{curr.y}}`; continue; }}
+      const r = Math.min(radius, len1/2, len2/2);
+      const bx = curr.x - (dx1/len1)*r, by = curr.y - (dy1/len1)*r;
+      const ax = curr.x + (dx2/len2)*r, ay = curr.y + (dy2/len2)*r;
+      d += ` L ${{bx}} ${{by}} Q ${{curr.x}} ${{curr.y}} ${{ax}} ${{ay}}`;
+    }}
+    d += ` L ${{pts[pts.length-1].x}} ${{pts[pts.length-1].y}}`;
+    return d;
+  }}
+
+  // ── Edges (rendered FIRST — nodes render on top, covering crossings) ──
+  // Orthogonal routing only: horizontal/vertical segments with right-angle turns.
+  // Like Azure official architecture diagrams.
+  EDGES.forEach(edge => {{
+    const fn = NODES.find(n => n.id === edge.from);
+    const tn = NODES.find(n => n.id === edge.to);
+    if (!fn || !tn) return;
+    const fromBox = getNodeBox(fn);
+    const toBox = getNodeBox(tn);
+    if (!fromBox || !toBox) return;
+
+    const isPeEdge = edge.type === 'private';
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    let pts, labelX, labelY;
+
+    if (isPeEdge) {{
+      // PE → direct vertical
+      const sx = fromBox.cx, sy = fromBox.y + fromBox.h;
+      const ex = toBox.cx, ey = toBox.y;
+      pts = [{{x: sx, y: sy}}, {{x: ex, y: ey}}];
+    }} else {{
+      // Orthogonal routing: determine exit/entry sides
+      const dx = toBox.cx - fromBox.cx;
+      const dy = toBox.cy - fromBox.cy;
+      let exitSide, entrySide;
+
+      if (Math.abs(dx) >= Math.abs(dy)) {{
+        exitSide = dx >= 0 ? 'right' : 'left';
+        entrySide = dx >= 0 ? 'left' : 'right';
+      }} else {{
+        exitSide = dy >= 0 ? 'bottom' : 'top';
+        entrySide = dy >= 0 ? 'top' : 'bottom';
+      }}
+
+      const sp = borderExit(fromBox, exitSide);
+      const ep = borderExit(toBox, entrySide);
+      const stagger = (_routeCounter % 5 - 2) * 6;
+      _routeCounter++;
+
+      if (exitSide === 'right' || exitSide === 'left') {{
+        if (Math.abs(sp.y - ep.y) < 8) {{
+          pts = [sp, ep]; // straight horizontal
+        }} else {{
+          const midX = (sp.x + ep.x) / 2 + stagger;
+          pts = [sp, {{x: midX, y: sp.y}}, {{x: midX, y: ep.y}}, ep];
+        }}
+      }} else {{
+        if (Math.abs(sp.x - ep.x) < 8) {{
+          pts = [sp, ep]; // straight vertical
+        }} else {{
+          const midY = (sp.y + ep.y) / 2 + stagger;
+          pts = [sp, {{x: sp.x, y: midY}}, {{x: ep.x, y: midY}}, ep];
+        }}
+      }}
+    }}
+
+    // Render path
+    path.setAttribute('d', pts.length <= 2
+      ? `M ${{pts[0].x}} ${{pts[0].y}} L ${{pts[pts.length-1].x}} ${{pts[pts.length-1].y}}`
+      : buildOrthoPath(pts));
+    path.setAttribute('fill', 'none');
+    path.setAttribute('stroke', isPeEdge ? '#5C2D91' : '#8a8886');
+    path.setAttribute('stroke-width', isPeEdge ? '1' : '1.2');
+    path.setAttribute('stroke-dasharray', edge.dash || '0');
+    path.setAttribute('marker-end', `url(#${{markerFor(edge.type)}})`);
+    path.setAttribute('opacity', isPeEdge ? '0.5' : '0.65');
+    root.appendChild(path);
+
+    // Label on middle segment
+    const mid = Math.floor(pts.length / 2);
+    labelX = (pts[Math.max(0,mid-1)].x + pts[Math.min(pts.length-1,mid)].x) / 2;
+    labelY = (pts[Math.max(0,mid-1)].y + pts[Math.min(pts.length-1,mid)].y) / 2;
+
+    if (edge.label) {{
+      const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      const r = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      const t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      const bw = edge.label.length * 5.5 + 10;
+      r.setAttribute('x', labelX-bw/2); r.setAttribute('y', labelY-7);
+      r.setAttribute('width', bw); r.setAttribute('height', 14);
+      r.setAttribute('rx', '3'); r.setAttribute('fill', 'white');
+      r.setAttribute('stroke', '#d2d0ce'); r.setAttribute('stroke-width', '0.5');
+      r.setAttribute('opacity', '0.92');
+      t.setAttribute('x', labelX); t.setAttribute('y', labelY+3);
+      t.setAttribute('text-anchor', 'middle'); t.setAttribute('font-size', '8');
+      t.setAttribute('fill', '#605e5c'); t.setAttribute('font-family', 'Segoe UI, sans-serif');
+      t.textContent = edge.label;
+      g.appendChild(r); g.appendChild(t);
+      root.appendChild(g);
+    }}
+  }});
+
+  // ── Nodes (rendered LAST — on top of edges, covering crossing points) ──
   NODES.forEach(node => {{
     const pos = positions[node.id];
     if (!pos) return;
@@ -736,119 +998,6 @@ function renderDiagram() {{
     g.addEventListener('mouseleave', () => {{ document.getElementById('tooltip').style.display = 'none'; }});
 
     root.appendChild(g);
-  }});
-
-  // ── Edges ──
-  // Strategy: PE edges = direct vertical. All others that have obstacles = route BELOW all nodes.
-  const bounds = getGlobalBounds();
-  const baseRouteY = bounds.maxY + 30;  // below every node guaranteed
-
-  EDGES.forEach(edge => {{
-    const fn = NODES.find(n => n.id === edge.from);
-    const tn = NODES.find(n => n.id === edge.to);
-    if (!fn || !tn) return;
-    const fromBox = getNodeBox(fn);
-    const toBox = getNodeBox(tn);
-    if (!fromBox || !toBox) return;
-
-    const isPeEdge = edge.type === 'private';
-    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    let labelX, labelY;
-
-    // PE edges: always direct vertical/straight line
-    if (isPeEdge) {{
-      const sx = fromBox.cx, sy = fromBox.y + fromBox.h;  // bottom of PE
-      const ex = toBox.cx, ey = toBox.y;                   // top of service
-      path.setAttribute('d', `M ${{sx}} ${{sy}} L ${{ex}} ${{ey}}`);
-      labelX = (sx+ex)/2; labelY = (sy+ey)/2;
-    }}
-    // Adjacent nodes (no obstacle between them): direct connection
-    else if (!hasObstacle(edge.from, edge.to, fromBox.cx, fromBox.cy, toBox.cx, toBox.cy)) {{
-      const sx = fromBox.cx, sy = fromBox.cy;
-      const ex = toBox.cx, ey = toBox.cy;
-      // Exit/enter at closest borders
-      const fromSide = ex > sx ? 'right' : ex < sx ? 'left' : (ey > sy ? 'bottom' : 'top');
-      const toSide = sx > ex ? 'right' : sx < ex ? 'left' : (sy > ey ? 'bottom' : 'top');
-      const sp = borderExit(fromBox, fromSide);
-      const ep = borderExit(toBox, toSide);
-      // Gentle S-curve
-      if (Math.abs(sp.y - ep.y) < 15) {{
-        // Same row, use slight arc
-        const midX = (sp.x + ep.x)/2, arcY = sp.y - 35;
-        path.setAttribute('d', `M ${{sp.x}} ${{sp.y}} Q ${{midX}} ${{arcY}} ${{ep.x}} ${{ep.y}}`);
-        labelX = midX; labelY = arcY;
-      }} else {{
-        const cy1 = sp.y + (ep.y - sp.y)*0.3;
-        const cy2 = sp.y + (ep.y - sp.y)*0.7;
-        path.setAttribute('d', `M ${{sp.x}} ${{sp.y}} C ${{sp.x}} ${{cy1}} ${{ep.x}} ${{cy2}} ${{ep.x}} ${{ep.y}}`);
-        labelX = (sp.x+ep.x)/2; labelY = (sp.y+ep.y)/2;
-      }}
-    }}
-    // Has obstacles: route BELOW all nodes with staggered Y
-    else {{
-      const routeY = baseRouteY + (_routeCounter * 22);
-      _routeCounter++;
-      // X nudge to separate vertical segments
-      const nudge = (_routeCounter % 2 === 0 ? 5 : -5) * Math.ceil(_routeCounter / 2);
-
-      const exitPt = borderExit(fromBox, 'bottom');
-      const enterPt = borderExit(toBox, 'bottom');
-      const ex = exitPt.x + nudge, enx = enterPt.x + nudge;
-
-      const pts = [
-        exitPt,
-        {{ x: ex, y: routeY }},
-        {{ x: enx, y: routeY }},
-        enterPt
-      ];
-
-      // Build path with rounded corners
-      let d = `M ${{pts[0].x}} ${{pts[0].y}}`;
-      const radius = 12;
-      for (let i = 1; i < pts.length - 1; i++) {{
-        const prev = pts[i-1], curr = pts[i], next = pts[i+1];
-        const dx1 = curr.x - prev.x, dy1 = curr.y - prev.y;
-        const dx2 = next.x - curr.x, dy2 = next.y - curr.y;
-        const len1 = Math.sqrt(dx1*dx1 + dy1*dy1);
-        const len2 = Math.sqrt(dx2*dx2 + dy2*dy2);
-        if (len1 < 1 || len2 < 1) {{ d += ` L ${{curr.x}} ${{curr.y}}`; continue; }}
-        const r = Math.min(radius, len1/2, len2/2);
-        const bx = curr.x - (dx1/len1)*r, by = curr.y - (dy1/len1)*r;
-        const ax = curr.x + (dx2/len2)*r, ay = curr.y + (dy2/len2)*r;
-        d += ` L ${{bx}} ${{by}} Q ${{curr.x}} ${{curr.y}} ${{ax}} ${{ay}}`;
-      }}
-      d += ` L ${{pts[pts.length-1].x}} ${{pts[pts.length-1].y}}`;
-      path.setAttribute('d', d);
-
-      labelX = (pts[1].x + pts[2].x) / 2;
-      labelY = pts[1].y + 14;
-    }}
-
-    path.setAttribute('fill', 'none');
-    path.setAttribute('stroke', edge.color);
-    path.setAttribute('stroke-width', isPeEdge ? '1.5' : '2');
-    path.setAttribute('stroke-dasharray', edge.dash || '0');
-    path.setAttribute('marker-end', `url(#${{markerFor(edge.type)}})`);
-    path.setAttribute('opacity', '0.7');
-    root.appendChild(path);
-
-    if (edge.label) {{
-      const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-      const r = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-      const t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-      const bw = edge.label.length * 5.5 + 12;
-      r.setAttribute('x', labelX-bw/2); r.setAttribute('y', labelY-8);
-      r.setAttribute('width', bw); r.setAttribute('height', 16);
-      r.setAttribute('rx', '4'); r.setAttribute('fill', 'white');
-      r.setAttribute('stroke', edge.color); r.setAttribute('stroke-width', '0.5');
-      r.setAttribute('opacity', '0.95');
-      t.setAttribute('x', labelX); t.setAttribute('y', labelY+4);
-      t.setAttribute('text-anchor', 'middle'); t.setAttribute('font-size', '9');
-      t.setAttribute('fill', '#605e5c'); t.setAttribute('font-family', 'Segoe UI, sans-serif');
-      t.textContent = edge.label;
-      g.appendChild(r); g.appendChild(t);
-      root.appendChild(g);
-    }}
   }});
 
 }}

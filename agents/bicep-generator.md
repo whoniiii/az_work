@@ -32,40 +32,45 @@ Bicep 코드에 API 버전을 하드코딩하지 않는다.
 
 ### 서비스별 MS Docs URL
 
-| 서비스 | MS Docs URL |
-|--------|-------------|
-| Microsoft Foundry / Azure OpenAI (CognitiveServices) | https://learn.microsoft.com/en-us/azure/templates/microsoft.cognitiveservices/accounts |
-| Azure AI Search | https://learn.microsoft.com/en-us/azure/templates/microsoft.search/searchservices |
-| Storage Account (ADLS Gen2) | https://learn.microsoft.com/en-us/azure/templates/microsoft.storage/storageaccounts |
-| Key Vault | https://learn.microsoft.com/en-us/azure/templates/microsoft.keyvault/vaults |
-| Virtual Network | https://learn.microsoft.com/en-us/azure/templates/microsoft.network/virtualnetworks |
-| Private Endpoints | https://learn.microsoft.com/en-us/azure/templates/microsoft.network/privateendpoints |
-| Private DNS Zones | https://learn.microsoft.com/en-us/azure/templates/microsoft.network/privatednszones |
-| Microsoft Fabric | https://learn.microsoft.com/en-us/azure/templates/microsoft.fabric/capacities |
-| ADF | https://learn.microsoft.com/en-us/azure/templates/microsoft.datafactory/factories |
-| Application Insights | https://learn.microsoft.com/en-us/azure/templates/microsoft.insights/components |
-| MachineLearningServices (Hub 기반 레거시) | https://learn.microsoft.com/en-us/azure/templates/microsoft.machinelearningservices/workspaces |
+`references/azure-dynamic-sources.md`에 전체 URL 레지스트리가 있다. 이 파일을 참조하여 fetch.
 
-> **중요**: 위 URL을 WebFetch로 직접 조회하여 최신 stable apiVersion을 확인한다. 레퍼런스 파일이나 이전 대화에 있던 하드코딩된 버전을 그냥 쓰지 말 것.
+> **중요**: URL에서 WebFetch로 직접 조회하여 최신 stable apiVersion을 확인한다. 레퍼런스 파일이나 이전 대화에 있던 하드코딩된 버전을 그냥 쓰지 말 것.
 
 > **하위 리소스도 반드시 확인**: 부모 리소스 페이지에서 하위 리소스(accounts/projects, accounts/deployments, privateDnsZones/virtualNetworkLinks, privateEndpoints/privateDnsZoneGroups 등)의 API 버전도 함께 확인한다. 부모와 하위의 API 버전이 다를 수 있다.
 
-> **에러/경고 발생 시에도 동일 원칙 적용**: what-if나 배포 중 API 버전 관련 에러가 발생하면, 에러 메시지에 포함된 버전을 "최신 버전"으로 믿고 바로 적용하지 않는다. 반드시 위 MS Docs URL을 다시 fetch하여 실제 최신 stable 버전을 확인한 후 수정한다.
+> **에러/경고 발생 시에도 동일 원칙 적용**: what-if나 배포 중 API 버전 관련 에러가 발생하면, 에러 메시지에 포함된 버전을 "최신 버전"으로 믿고 바로 적용하지 않는다. 반드시 MS Docs URL을 다시 fetch하여 실제 최신 stable 버전을 확인한 후 수정한다.
 
 ---
 
-## 사전 준비 (생성 전 참고)
+## 정보 참조 원칙 (Stable vs Dynamic)
 
-아래 파일은 자주 사용되는 서비스의 핵심 속성과 흔한 실수를 정리한 치트시트다.
-**이 파일에 없는 서비스도 당연히 지원한다.** 없는 서비스는 MS Docs를 직접 fetch하여 리소스 타입, 핵심 속성, PE groupId 등을 확인한 후 Bicep을 작성한다.
+### 항상 fetch (Dynamic)
+- API version → `azure-dynamic-sources.md`의 URL에서 fetch
+- 모델 가용성 (이름, 버전, 리전) → fetch
+- SKU 목록/가격 → fetch
+- 리전 가용성 → fetch
 
-1. `references/ai-data-services.md` — 주요 AI/Data 서비스의 핵심 속성 및 흔한 실수
-2. `references/private-endpoints.md` — 주요 서비스의 PE groupId 및 DNS Zone 매핑
+### Reference 우선 참조 (Stable)
+- 필수 속성 패턴 (`isHnsEnabled`, `allowProjectManagement` 등) → `service-gotchas.md`
+- PE groupId & DNS Zone 매핑 (주요 서비스) → `service-gotchas.md`
+- PE/보안/명명 공통 패턴 → `azure-common-patterns.md`
+- AI/Data 서비스 구성 가이드 → `domain-packs/ai-data.md`
 
-> **⚠️ 레퍼런스 파일은 참고용 치트시트이지 정답이 아니다.**
-> 표에 있는 서비스라도 Bicep 생성 전 MS Docs에서 groupId와 DNS Zone 매핑을 반드시 재확인한다.
-> Azure는 subresource나 DNS Zone 매핑을 변경할 수 있으므로, 블라인드 복사는 금지.
-> 참조: https://learn.microsoft.com/en-us/azure/private-link/private-endpoint-dns
+> Stable 정보도 확신이 없으면 MS Docs로 재확인. 하지만 매번 fetch할 필요는 없다.
+
+---
+
+## Unknown Service Fallback Workflow
+
+v1 범위(`domain-packs/ai-data.md`)에 없는 서비스를 사용자가 요구할 경우:
+
+1. **사용자 고지**: "이 서비스는 v1 기본 범위 밖입니다. MS Docs를 참조하여 best-effort로 생성합니다."
+2. **API version fetch**: `https://learn.microsoft.com/en-us/azure/templates/microsoft.{provider}/{resourceType}` 형식으로 URL 구성 후 fetch
+3. **리소스 타입/필수 속성 파악**: fetch한 Docs에서 resource type, required properties 확인
+4. **PE 매핑 확인**: `https://learn.microsoft.com/en-us/azure/private-link/private-endpoint-dns` fetch하여 groupId/DNS Zone 확인
+5. **공통 패턴 적용**: `azure-common-patterns.md`의 보안/네트워크/명명 패턴 적용
+6. **Bicep 작성**: 위 정보를 바탕으로 모듈 생성
+7. **리뷰어 전달**: `az bicep build`로 컴파일 검증
 
 ## 입력 받는 정보
 
@@ -91,15 +96,15 @@ Phase 1 완료 시 다음 정보가 확정되어 있어야 한다:
     ├── storage.bicep           # ADLS Gen2 (isHnsEnabled: true 필수)
     ├── fabric.bicep            # Microsoft Fabric Capacity (필요 시만)
     ├── keyvault.bicep          # Key Vault
-    ├── monitoring.bicep        # Application Insights, Log Analytics (Microsoft Foundry 사용 시)
+    ├── monitoring.bicep        # Application Insights, Log Analytics (Hub 기반 구성에서만 필요)
     └── private-endpoints.bicep # 모든 PE + Private DNS Zone + VNet Link + DNS Zone Group
 ```
 
 ## 모듈별 책임 범위
 
 ### `network.bicep`
-- VNet (기본 CIDR: 10.0.0.0/16)
-- pe-subnet (10.0.1.0/24) — `privateEndpointNetworkPolicies: 'Disabled'` 필수
+- VNet — CIDR은 파라미터로 받음 (고객 환경 기존 주소공간과 충돌 방지)
+- pe-subnet — `privateEndpointNetworkPolicies: 'Disabled'` 필수
 - 추가 서브넷 필요 시 파라미터로 처리
 
 ### `ai.bicep`
@@ -109,7 +114,7 @@ Phase 1 완료 시 다음 정보가 확정되어 있어야 한다:
   - 모델 배포 (`Microsoft.CognitiveServices/accounts/deployments`) — Foundry resource 레벨에서 수행
 - **⚠️ Foundry Project** (`Microsoft.CognitiveServices/accounts/projects`) — **Foundry resource를 만들면 반드시 함께 생성. 없으면 포털에서 사용 불가**
 - **Azure AI Search** — Semantic Ranking, 벡터 검색 설정
-- ⚠️ Hub 기반(`Microsoft.MachineLearningServices/workspaces`)은 ML/오픈소스 모델 필요 시에만 사용. 일반 AI/RAG 구성은 Microsoft Foundry (AIServices) 사용
+- Hub 기반(`Microsoft.MachineLearningServices/workspaces`)은 사용자가 명시적으로 요구하거나, ML 훈련/오픈소스 모델이 필요한 경우에만 검토. 기본 AI/RAG 워크로드에서는 Foundry (AIServices)를 기본 선택
 
 ### `storage.bicep`
 - ADLS Gen2: `isHnsEnabled: true` ← **절대 빠트리지 말 것**
@@ -130,7 +135,7 @@ Phase 1 완료 시 다음 정보가 확정되어 있어야 한다:
   1. `Microsoft.Network/privateEndpoints` (pe-subnet에 배치)
   2. `Microsoft.Network/privateDnsZones` + VNet Link (`registrationEnabled: false`)
   3. `Microsoft.Network/privateEndpoints/privateDnsZoneGroups`
-- 서비스별 DNS Zone 매핑은 `references/private-endpoints.md` 참조
+- 서비스별 DNS Zone 매핑은 `references/service-gotchas.md` 참조
 
 ## 필수 코딩 원칙
 
@@ -198,8 +203,8 @@ targetScope = 'resourceGroup'
 // ── 공통 파라미터 ─────────────────────────────────────────
 param location string   // Phase 1에서 확정한 위치 — 하드코딩 금지
 param projectPrefix string
-param vnetAddressPrefix string = '10.0.0.0/16'
-param peSubnetPrefix string = '10.0.1.0/24'
+param vnetAddressPrefix string    // ← 사용자에게 확인. 기존 네트워크와 충돌 방지
+param peSubnetPrefix string       // ← VNet 내 PE 전용 서브넷 CIDR
 
 // ── 네트워크 ──────────────────────────────────────────────
 module network './modules/network.bicep' = {
@@ -244,7 +249,7 @@ module privateEndpoints './modules/private-endpoints.bicep' = {
     location: location
     vnetId: network.outputs.vnetId
     peSubnetId: network.outputs.peSubnetId
-    openAiId: ai.outputs.openAiId
+    foundryId: ai.outputs.foundryId
     searchId: ai.outputs.searchId
     storageId: storage.outputs.storageId
     keyVaultId: keyVault.outputs.keyVaultId
@@ -253,7 +258,7 @@ module privateEndpoints './modules/private-endpoints.bicep' = {
 
 // ── 출력 ──────────────────────────────────────────────────
 output vnetId string = network.outputs.vnetId
-output openAiEndpoint string = ai.outputs.openAiEndpoint
+output foundryEndpoint string = ai.outputs.foundryEndpoint
 output searchEndpoint string = ai.outputs.searchEndpoint
 ```
 
@@ -270,18 +275,20 @@ param projectPrefix = '<프로젝트 접두사>'
 
 ## 자주 발생하는 실수 체크
 
-| 항목 | 잘못된 예 | 올바른 예 |
-|------|----------|----------|
-| ADLS Gen2 HNS | `isHnsEnabled: false` (생략) | `isHnsEnabled: true` |
-| PE 서브넷 정책 | 미설정 | `privateEndpointNetworkPolicies: 'Disabled'` |
-| DNS Zone Group | PE만 생성 | PE + DNS Zone + VNet Link + DNS Zone Group |
-| Microsoft Foundry resource | `kind: 'OpenAI'` 또는 MachineLearningServices 사용 | `kind: 'AIServices'` + `allowProjectManagement: true` |
-| Foundry Project 미생성 | Foundry resource만 있고 Project 없음 | **Foundry resource + Project 반드시 세트로 생성** — 없으면 포털 사용 불가 |
-| 레거시 Hub 사용 | `Microsoft.MachineLearningServices/workspaces` (일반 AI용) | Microsoft Foundry (AIServices) 사용 — Hub는 ML/오픈소스 모델 전용 |
-| 공개 네트워크 | 설정 없음 | `publicNetworkAccess: 'Disabled'` |
-| Storage 이름 | `st-my-storage` (하이픈 불가) | `stmystorage` 또는 `st${uniqueString(...)}` |
-| 서비스 지역 제한 | 가용하지 않은 지역에 배포 | MS Docs에서 서비스별 가용 지역 확인 후 배포. 지역을 하드코딩하지 말 것 |
-| 지역 하드코딩 | `location = 'koreacentral'`, `openAiLocation = 'eastus'` 고정 | Phase 1에서 확정한 위치를 사용. 가용성은 MS Docs에서 동적 확인 |
+`references/service-gotchas.md`에 전체 체크리스트가 있다. 핵심만 요약:
+
+| 항목 | ❌ 잘못 | ✅ 올바름 |
+|------|--------|----------|
+| ADLS Gen2 | `isHnsEnabled` 생략 | `isHnsEnabled: true` |
+| PE 서브넷 | 정책 미설정 | `privateEndpointNetworkPolicies: 'Disabled'` |
+| PE 구성 | PE만 생성 | PE + DNS Zone + VNet Link + DNS Zone Group |
+| Foundry | `kind: 'OpenAI'` | `kind: 'AIServices'` + `allowProjectManagement: true` |
+| Foundry Project | 미생성 | Foundry resource와 반드시 세트 |
+| Hub 사용 | 일반 AI에 사용 | 사용자 명시 요청 또는 ML/오픈소스 필요 시에만 |
+| 공개 네트워크 | 미설정 | `publicNetworkAccess: 'Disabled'` |
+| Storage 이름 | 하이픈 포함 | 소문자+숫자만, `uniqueString()` 권장 |
+| API version | 이전 값 복사 | MS Docs fetch (Dynamic) |
+| 리전 | 하드코딩 | 파라미터 + MS Docs 가용성 확인 (Dynamic) |
 
 ## 생성 완료 후
 

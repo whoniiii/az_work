@@ -1,23 +1,140 @@
 {
   "skill_name": "azure-arch-builder",
+  "description": "v1 scope: AI/Data-first + generic fallback. Stable vs Dynamic 분리. Decision Rules 기반 서비스 선택.",
   "evals": [
     {
       "id": 1,
+      "category": "v1-core",
       "prompt": "사내 문서 기반 RAG 챗봇을 만들고 싶어. Microsoft Foundry에 채팅 모델이랑 임베딩 모델 배포하고, AI Search로 검색하고, ADLS Gen2에 문서 저장, Key Vault로 키 관리하는 구조야. 모든 서비스 private endpoint로 연결해줘. Bicep이랑 아키텍처 다이어그램 만들어줘.",
-      "expected_output": "main.bicep + modules, main.bicepparam, 아키텍처 HTML 다이어그램. Foundry resource + Foundry Project 반드시 포함. PE 3종 세트 (PE + DNS Zone + VNet Link + DNS Zone Group). ADLS Gen2 isHnsEnabled: true. 프로젝트 이름, 위치, SKU를 사용자에게 먼저 확인.",
-      "files": []
+      "expected_output": "main.bicep + modules, main.bicepparam, 아키텍처 HTML 다이어그램. Foundry resource (kind: AIServices, allowProjectManagement: true) + Foundry Project (accounts/projects) 반드시 포함. PE 3종 세트 (PE + DNS Zone + VNet Link + DNS Zone Group). ADLS Gen2 isHnsEnabled: true. publicNetworkAccess: 'Disabled' 전 서비스. 프로젝트 이름, 위치, SKU를 사용자에게 먼저 확인.",
+      "checks": [
+        "Foundry resource kind: 'AIServices' (not 'OpenAI')",
+        "Foundry Project (accounts/projects) 존재",
+        "allowProjectManagement: true",
+        "identity: { type: 'SystemAssigned' }",
+        "isHnsEnabled: true (ADLS Gen2)",
+        "PE 3종 세트 완비 (PE + DNS Zone + VNet Link + DNS Zone Group)",
+        "publicNetworkAccess: 'Disabled'",
+        "privateEndpointNetworkPolicies: 'Disabled' (pe-subnet)",
+        "API version은 MS Docs fetch로 확인 (하드코딩 아님)",
+        "모델 가용성 확인 수행",
+        "location 파라미터화 (하드코딩 금지)",
+        "uniqueString() 사용으로 리소스명 충돌 방지"
+      ],
+      "references": ["service-gotchas.md §1 §2", "domain-packs/ai-data.md §1 §2 §3", "azure-common-patterns.md"]
     },
     {
       "id": 2,
+      "category": "v1-core",
       "prompt": "데이터 플랫폼을 만들어야 해. Fabric Capacity로 분석하고, ADLS Gen2를 저장소로 쓰고, ADF로 온프레미스 데이터 수집하는 구조야. private endpoint 포함해서 Bicep이랑 다이어그램 만들어줘.",
-      "expected_output": "Fabric Capacity Bicep (SKU는 사용자 확인), ADLS Gen2 with HNS, ADF 리소스. admin 이메일 파라미터 처리. 프로젝트 이름, 위치, SKU를 사용자에게 먼저 확인.",
-      "files": []
+      "expected_output": "Fabric Capacity Bicep (administration.members 필수, SKU는 사용자 확인), ADLS Gen2 with isHnsEnabled: true, ADF with publicNetworkAccess: 'Disabled'. PE 3종 세트. admin 이메일 파라미터 처리. 프로젝트 이름, 위치, SKU를 사용자에게 먼저 확인.",
+      "checks": [
+        "Fabric Capacity administration.members 존재",
+        "isHnsEnabled: true",
+        "ADF publicNetworkAccess: 'Disabled'",
+        "PE groupId 정확 (blob, dfs, dataFactory)",
+        "API version MS Docs fetch",
+        "Foundry/OpenAI 미포함 (사용자가 요청 안 함)"
+      ],
+      "references": ["service-gotchas.md §1 §2", "domain-packs/ai-data.md §3 §4 §5"]
     },
     {
       "id": 3,
+      "category": "v1-core",
       "prompt": "Microsoft Foundry를 완전 private으로 구성하고 싶어. AI Search 연결하고, 프로젝트도 만들어줘. 스토리지는 ADLS Gen2, Key Vault도 필요해. 다이어그램도 만들어줘.",
-      "expected_output": "Foundry resource (kind: AIServices) + Foundry Project (accounts/projects) 반드시 포함. AI Search 연결. PE + DNS Zone 전체 구성. 프로젝트 이름, 위치, SKU를 사용자에게 먼저 확인.",
-      "files": []
+      "expected_output": "Foundry resource (kind: AIServices) + Foundry Project (accounts/projects) 반드시 포함. AI Search 연결. PE + DNS Zone 전체 구성. Key Vault enablePurgeProtection: true, enableRbacAuthorization: true. 프로젝트 이름, 위치, SKU를 사용자에게 먼저 확인.",
+      "checks": [
+        "Foundry Project 존재",
+        "allowProjectManagement: true",
+        "AI Search semanticSearch 속성 존재 (값은 사용자 확인 — disabled | free | standard)",
+        "Key Vault enablePurgeProtection: true",
+        "Key Vault enableRbacAuthorization: true",
+        "모든 서비스 publicNetworkAccess: 'Disabled'",
+        "PE DNS Zone 매핑 정확 (cognitiveservices, search, blob, vaultcore)"
+      ],
+      "references": ["service-gotchas.md §1 §2 §3", "domain-packs/ai-data.md §1 §2"]
+    },
+    {
+      "id": 4,
+      "category": "decision-rule",
+      "prompt": "Azure OpenAI로 GPT-4o 배포하고 싶어. Bicep 만들어줘.",
+      "expected_output": "사용자에게 Foundry (AIServices) 사용을 기본 제안 (Decision Rule). 사용자가 명시적으로 standalone OpenAI를 원하면 그대로 진행하되, Foundry 대비 차이를 안내. Foundry 선택 시 Foundry Project도 반드시 포함.",
+      "checks": [
+        "Decision Rule 적용: kind: 'AIServices' 기본 제안 (kind: 'OpenAI'가 아닌)",
+        "사용자 선택권 존중 (강제하지 않음)",
+        "모델 가용성 MS Docs fetch 확인",
+        "Foundry 선택 시 Project 포함"
+      ],
+      "references": ["service-gotchas.md §4", "domain-packs/ai-data.md §1"]
+    },
+    {
+      "id": 5,
+      "category": "decision-rule",
+      "prompt": "AI Hub로 ML 훈련 환경 만들어줘. 오픈소스 모델도 쓸 거야.",
+      "expected_output": "Hub (MachineLearningServices) 사용이 적절한 케이스. kind: 'Hub'. 의존 서비스: Storage Account, Key Vault, Application Insights + Log Analytics. Foundry가 아닌 Hub를 사용하는 이유를 명시.",
+      "checks": [
+        "Decision Rule 정확 적용: ML 훈련 + 오픈소스 → Hub 적절",
+        "Hub 의존성 완비 (Storage, Key Vault, AppInsights, LogAnalytics)",
+        "Application Insights 포함 (Hub에서는 필요)",
+        "Foundry Project 미포함 (Hub 사용이므로)"
+      ],
+      "references": ["service-gotchas.md §4", "domain-packs/ai-data.md §6"]
+    },
+    {
+      "id": 6,
+      "category": "fallback",
+      "prompt": "AKS 클러스터를 만들고 거기에 컨테이너 배포하고 싶어. Key Vault도 연결해줘. Private endpoint로.",
+      "expected_output": "v1 범위 밖 서비스(AKS) 사용을 사용자에게 고지. MS Docs fetch로 AKS Bicep 레퍼런스 확인. Key Vault는 v1 범위이므로 service-gotchas.md 참조. 공통 패턴(PE, 보안, 명명) 적용. best-effort 품질 안내.",
+      "checks": [
+        "Fallback workflow 고지 메시지 존재",
+        "AKS API version MS Docs fetch",
+        "AKS PE groupId/DNS Zone MS Docs fetch (PE DNS 통합 문서)",
+        "Key Vault는 v1 범위이므로 service-gotchas.md 참조",
+        "azure-common-patterns.md 패턴 적용 (PE 3종, 명명 등)",
+        "best-effort 품질 수준 차이 안내"
+      ],
+      "references": ["SKILL.md §fallback", "azure-dynamic-sources.md §1 §3", "azure-common-patterns.md"]
+    },
+    {
+      "id": 7,
+      "category": "fallback",
+      "prompt": "SQL Database랑 App Service 만들어줘. 웹앱에서 DB 연결하는 구조야.",
+      "expected_output": "v1 범위 밖 서비스(SQL Database, App Service) 사용을 고지. MS Docs에서 두 서비스의 Bicep 레퍼런스, PE groupId, DNS Zone을 fetch. 공통 패턴 적용. az bicep build로 컴파일 검증.",
+      "checks": [
+        "Fallback workflow 고지",
+        "SQL Database, App Service 모두 MS Docs fetch",
+        "PE 매핑 fetch (Sql, sites)",
+        "공통 패턴 적용",
+        "az bicep build 컴파일 검증"
+      ],
+      "references": ["SKILL.md §fallback", "azure-dynamic-sources.md"]
+    },
+    {
+      "id": 8,
+      "category": "stable-vs-dynamic",
+      "prompt": "AI Search Standard S1으로 만들어줘. API 버전은 2024-01-01로 해줘.",
+      "expected_output": "사용자가 지정한 API 버전을 그대로 쓰지 않고, MS Docs를 fetch하여 최신 stable 버전을 확인. 사용자 지정 버전과 다르면 차이를 안내. SKU는 사용자 확인된 값이므로 그대로 사용.",
+      "checks": [
+        "API version: 사용자 지정 값을 맹목적으로 사용하지 않음",
+        "MS Docs fetch로 최신 stable API version 확인",
+        "차이가 있으면 사용자에게 안내",
+        "SKU(Standard S1)는 사용자 확인 값이므로 수용"
+      ],
+      "references": ["azure-dynamic-sources.md", "bicep-generator.md §Step0"]
+    },
+    {
+      "id": 9,
+      "category": "hardcoding-regression",
+      "prompt": "[리뷰어 테스트] location이 'koreacentral'로 하드코딩되고, Foundry가 kind: 'OpenAI'로 되어있고, API version이 오래된 값인 Bicep 파일을 리뷰해줘.",
+      "expected_output": "리뷰어가 3가지 문제 모두 감지: (1) location 하드코딩 → param location으로 수정, (2) kind: 'OpenAI' → Decision Rule 위반, kind: 'AIServices' 제안, (3) API version → MS Docs fetch로 최신 확인. Step 4 하드코딩 회귀 검사에서 모두 플래그.",
+      "checks": [
+        "location 하드코딩 감지 및 파라미터화 수정",
+        "Decision Rule 위반 감지 (OpenAI → AIServices)",
+        "API version 하드코딩 감지 및 MS Docs fetch",
+        "az bicep build 실행",
+        "결과 보고 형식 준수 (컴파일/체크리스트/하드코딩 검사)"
+      ],
+      "references": ["bicep-reviewer.md §Step4", "service-gotchas.md §4"]
     }
   ]
 }
