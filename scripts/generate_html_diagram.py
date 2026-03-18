@@ -382,8 +382,8 @@ const NODES = {nodes_js};
 const EDGES = {edges_js};
 
 // ── Node sizing ──
-const SVC_W = 120, SVC_H = 100;  // service node (icon above, name below)
-const PE_W = 90, PE_H = 70;      // pe node (smaller)
+const SVC_W = 150, SVC_H = 100;  // service node (icon above, name below)
+const PE_W = 100, PE_H = 70;     // pe node (smaller)
 const GAP = 40;
 
 // ── Layout: Category Group Box style ──
@@ -407,12 +407,12 @@ mainNodes.forEach(n => {{
 }});
 
 // Group box layout parameters
-const GROUP_PAD = 20;         // padding inside group box
+const GROUP_PAD = 24;         // padding inside group box
 const GROUP_TITLE_H = 28;    // height for group title bar
-const GROUP_GAP = 30;        // gap between group boxes
+const GROUP_GAP = 50;        // gap between group boxes
 const COLS_PER_GROUP = 3;    // max columns in a group grid
-const CELL_W = SVC_W + 16;   // cell width in grid
-const CELL_H = SVC_H + 24;   // cell height in grid
+const CELL_W = SVC_W + 70;   // cell width in grid (70px gap — room for edge routing around nodes)
+const CELL_H = SVC_H + 70;   // cell height in grid (70px vertical gap for edge routing)
 
 // Calculate group box dimensions
 function groupDimensions(nodeCount) {{
@@ -498,8 +498,8 @@ if (peNodes.length > 0) {{
   // Use wider PE layout (more columns)
   const peCols = Math.min(peNodes.length, 6);
   const peRows = Math.ceil(peNodes.length / peCols);
-  const peCellW = PE_W + 16;
-  const peCellH = PE_H + 12;
+  const peCellW = PE_W + 50;
+  const peCellH = PE_H + 30;
   const peBoxW = peCols * peCellW + GROUP_PAD * 2;
   const peBoxH = peRows * peCellH + GROUP_PAD + GROUP_TITLE_H;
 
@@ -775,9 +775,127 @@ function renderDiagram() {{
     return d;
   }}
 
+  // ── Obstacle avoidance: route edges around nodes ──
+  function segHitsNode(x1, y1, x2, y2, pos, nw, nh, margin) {{
+    const nx1 = pos.x - margin, ny1 = pos.y - margin;
+    const nx2 = pos.x + nw + margin, ny2 = pos.y + nh + margin;
+    if (Math.abs(x1 - x2) < 1) {{
+      // Vertical segment
+      const x = x1;
+      const minY = Math.min(y1, y2), maxY = Math.max(y1, y2);
+      return x > nx1 && x < nx2 && maxY > ny1 && minY < ny2;
+    }} else {{
+      // Horizontal segment
+      const y = y1;
+      const minX = Math.min(x1, x2), maxX = Math.max(x1, x2);
+      return y > ny1 && y < ny2 && maxX > nx1 && minX < nx2;
+    }}
+  }}
+
+  function avoidNodes(pts, fromId, toId) {{
+    const MARGIN = 25;
+    let points = pts.map(p => ({{...p}}));
+    // Save original anchors — these must NEVER move (they attach to nodes)
+    const startAnchor = {{...points[0]}};
+    const endAnchor = {{...points[points.length - 1]}};
+
+    for (let iter = 0; iter < 8; iter++) {{
+      let found = false;
+
+      for (let i = 0; i < points.length - 1 && !found; i++) {{
+        const p1 = points[i], p2 = points[i+1];
+
+        for (const node of NODES) {{
+          if (node.id === fromId || node.id === toId) continue;
+          const pos = positions[node.id];
+          if (!pos) continue;
+          const nw = node.type === 'pe' ? PE_W : SVC_W;
+          const nh = node.type === 'pe' ? PE_H : SVC_H;
+
+          if (!segHitsNode(p1.x, p1.y, p2.x, p2.y, pos, nw, nh, MARGIN)) continue;
+
+          found = true;
+          const isVert = Math.abs(p1.x - p2.x) < 1;
+          const isFirst = (i === 0);
+          const isLast = (i + 1 === points.length - 1);
+
+          if (points.length <= 2) {{
+            // Straight line hitting a node: convert to 4-point detour (anchors preserved)
+            if (isVert) {{
+              const leftX = pos.x - MARGIN;
+              const rightX = pos.x + nw + MARGIN;
+              const detourX = Math.abs(p1.x - leftX) <= Math.abs(p1.x - rightX) ? leftX : rightX;
+              points = [points[0], {{x: detourX, y: p1.y}}, {{x: detourX, y: p2.y}}, points[points.length-1]];
+            }} else {{
+              const topY = pos.y - MARGIN;
+              const bottomY = pos.y + nh + MARGIN;
+              const detourY = Math.abs(p1.y - topY) <= Math.abs(p1.y - bottomY) ? topY : bottomY;
+              points = [points[0], {{x: p1.x, y: detourY}}, {{x: p2.x, y: detourY}}, points[points.length-1]];
+            }}
+          }} else if (isFirst) {{
+            // First segment collides — keep points[0] (anchor), insert detour after it
+            if (isVert) {{
+              const leftX = pos.x - MARGIN;
+              const rightX = pos.x + nw + MARGIN;
+              const detourX = Math.abs(p1.x - leftX) <= Math.abs(p1.x - rightX) ? leftX : rightX;
+              points.splice(1, 0, {{x: p1.x, y: p1.y}}, {{x: detourX, y: p1.y}});
+              points[3] = {{x: detourX, y: p2.y}};
+            }} else {{
+              const topY = pos.y - MARGIN;
+              const bottomY = pos.y + nh + MARGIN;
+              const detourY = Math.abs(p1.y - topY) <= Math.abs(p1.y - bottomY) ? topY : bottomY;
+              points.splice(1, 0, {{x: p1.x, y: detourY}});
+              points[2] = {{x: p2.x, y: detourY}};
+            }}
+          }} else if (isLast) {{
+            // Last segment collides — keep last point (anchor), insert detour before it
+            if (isVert) {{
+              const leftX = pos.x - MARGIN;
+              const rightX = pos.x + nw + MARGIN;
+              const detourX = Math.abs(p1.x - leftX) <= Math.abs(p1.x - rightX) ? leftX : rightX;
+              points[i] = {{x: detourX, y: p1.y}};
+              points.splice(i + 1, 0, {{x: detourX, y: p2.y}}, {{x: p2.x, y: p2.y}});
+            }} else {{
+              const topY = pos.y - MARGIN;
+              const bottomY = pos.y + nh + MARGIN;
+              const detourY = Math.abs(p1.y - topY) <= Math.abs(p1.y - bottomY) ? topY : bottomY;
+              points[i] = {{x: p1.x, y: detourY}};
+              points.splice(i + 1, 0, {{x: p2.x, y: detourY}});
+            }}
+          }} else {{
+            // Middle segment: safe to push both endpoints
+            if (isVert) {{
+              const leftX = pos.x - MARGIN;
+              const rightX = pos.x + nw + MARGIN;
+              const newX = Math.abs(p1.x - leftX) <= Math.abs(p1.x - rightX) ? leftX : rightX;
+              points[i] = {{ x: newX, y: p1.y }};
+              points[i+1] = {{ x: newX, y: p2.y }};
+            }} else {{
+              const topY = pos.y - MARGIN;
+              const bottomY = pos.y + nh + MARGIN;
+              const newY = Math.abs(p1.y - topY) <= Math.abs(p1.y - bottomY) ? topY : bottomY;
+              points[i] = {{ x: p1.x, y: newY }};
+              points[i+1] = {{ x: p2.x, y: newY }};
+            }}
+          }}
+          break;
+        }}
+      }}
+
+      if (!found) break;
+    }}
+
+    // Restore anchors — guarantee lines always touch source/target nodes
+    points[0] = startAnchor;
+    points[points.length - 1] = endAnchor;
+
+    return points;
+  }}
+
   // ── Edges (rendered FIRST — nodes render on top, covering crossings) ──
+  // Edge labels are collected and rendered AFTER nodes so they stay visible.
   // Orthogonal routing only: horizontal/vertical segments with right-angle turns.
-  // Like Azure official architecture diagrams.
+  const _edgeLabels = [];
   EDGES.forEach(edge => {{
     const fn = NODES.find(n => n.id === edge.from);
     const tn = NODES.find(n => n.id === edge.to);
@@ -788,13 +906,19 @@ function renderDiagram() {{
 
     const isPeEdge = edge.type === 'private';
     const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    let pts, labelX, labelY;
+    let pts;
 
     if (isPeEdge) {{
-      // PE → direct vertical
+      // PE → orthogonal routing (also avoids nodes)
       const sx = fromBox.cx, sy = fromBox.y + fromBox.h;
       const ex = toBox.cx, ey = toBox.y;
-      pts = [{{x: sx, y: sy}}, {{x: ex, y: ey}}];
+      if (Math.abs(sx - ex) < 8) {{
+        pts = [{{x: sx, y: sy}}, {{x: ex, y: ey}}];
+      }} else {{
+        const midY = (sy + ey) / 2;
+        pts = [{{x: sx, y: sy}}, {{x: sx, y: midY}}, {{x: ex, y: midY}}, {{x: ex, y: ey}}];
+      }}
+      pts = avoidNodes(pts, edge.from, edge.to);
     }} else {{
       // Orthogonal routing: determine exit/entry sides
       const dx = toBox.cx - fromBox.cx;
@@ -829,6 +953,9 @@ function renderDiagram() {{
           pts = [sp, {{x: sp.x, y: midY}}, {{x: ep.x, y: midY}}, ep];
         }}
       }}
+
+      // Avoid intermediate nodes
+      pts = avoidNodes(pts, edge.from, edge.to);
     }}
 
     // Render path
@@ -843,27 +970,53 @@ function renderDiagram() {{
     path.setAttribute('opacity', isPeEdge ? '0.5' : '0.65');
     root.appendChild(path);
 
-    // Label on middle segment
-    const mid = Math.floor(pts.length / 2);
-    labelX = (pts[Math.max(0,mid-1)].x + pts[Math.min(pts.length-1,mid)].x) / 2;
-    labelY = (pts[Math.max(0,mid-1)].y + pts[Math.min(pts.length-1,mid)].y) / 2;
-
+    // Store label position for deferred rendering (after nodes)
+    // Collision-aware: try each segment's midpoint, pick the first that doesn't overlap a node.
     if (edge.label) {{
-      const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-      const r = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-      const t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
       const bw = edge.label.length * 5.5 + 10;
-      r.setAttribute('x', labelX-bw/2); r.setAttribute('y', labelY-7);
-      r.setAttribute('width', bw); r.setAttribute('height', 14);
-      r.setAttribute('rx', '3'); r.setAttribute('fill', 'white');
-      r.setAttribute('stroke', '#d2d0ce'); r.setAttribute('stroke-width', '0.5');
-      r.setAttribute('opacity', '0.92');
-      t.setAttribute('x', labelX); t.setAttribute('y', labelY+3);
-      t.setAttribute('text-anchor', 'middle'); t.setAttribute('font-size', '8');
-      t.setAttribute('fill', '#605e5c'); t.setAttribute('font-family', 'Segoe UI, sans-serif');
-      t.textContent = edge.label;
-      g.appendChild(r); g.appendChild(t);
-      root.appendChild(g);
+      const bh = 14;
+
+      function labelHitsNode(lx, ly) {{
+        return NODES.some(n => {{
+          const p = positions[n.id];
+          if (!p) return false;
+          const nw = n.type === 'pe' ? PE_W : SVC_W;
+          const nh = n.type === 'pe' ? PE_H : SVC_H;
+          return lx + bw/2 > p.x && lx - bw/2 < p.x + nw
+              && ly + bh/2 > p.y && ly - bh/2 < p.y + nh;
+        }});
+      }}
+
+      // Collect candidate positions: midpoint of each segment
+      const candidates = [];
+      for (let s = 0; s < pts.length - 1; s++) {{
+        const cx = (pts[s].x + pts[s+1].x) / 2;
+        const cy = (pts[s].y + pts[s+1].y) / 2;
+        // Prefer middle segments first, then outer ones
+        const priority = Math.abs(s - (pts.length-2)/2);
+        candidates.push({{ x: cx, y: cy, priority }});
+      }}
+      candidates.sort((a, b) => a.priority - b.priority);
+
+      // Pick first candidate that doesn't hit a node
+      let chosen = candidates[0];
+      for (const c of candidates) {{
+        if (!labelHitsNode(c.x, c.y)) {{ chosen = c; break; }}
+      }}
+
+      // If all candidates hit, offset the best one perpendicular to segment
+      if (labelHitsNode(chosen.x, chosen.y)) {{
+        // Try shifting up/down/left/right by 20px
+        const offsets = [{{x:0,y:-20}},{{x:0,y:20}},{{x:-20,y:0}},{{x:20,y:0}}];
+        for (const off of offsets) {{
+          if (!labelHitsNode(chosen.x+off.x, chosen.y+off.y)) {{
+            chosen = {{ x: chosen.x+off.x, y: chosen.y+off.y }};
+            break;
+          }}
+        }}
+      }}
+
+      _edgeLabels.push({{ label: edge.label, x: chosen.x, y: chosen.y }});
     }}
   }});
 
@@ -913,7 +1066,7 @@ function renderDiagram() {{
     name.setAttribute('font-size', isPe ? '9' : '10');
     name.setAttribute('font-weight', '600'); name.setAttribute('fill', '#323130');
     name.setAttribute('font-family', 'Segoe UI, sans-serif');
-    const maxC = isPe ? 12 : 16;
+    const maxC = isPe ? 14 : 20;
     name.textContent = node.name.length > maxC ? node.name.substring(0, maxC-1) + '..' : node.name;
     g.appendChild(name);
 
@@ -997,6 +1150,25 @@ function renderDiagram() {{
     }});
     g.addEventListener('mouseleave', () => {{ document.getElementById('tooltip').style.display = 'none'; }});
 
+    root.appendChild(g);
+  }});
+
+  // ── Edge labels (rendered AFTER nodes — always visible on top) ──
+  _edgeLabels.forEach(el => {{
+    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    const r = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    const t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    const bw = el.label.length * 5.5 + 10;
+    r.setAttribute('x', el.x-bw/2); r.setAttribute('y', el.y-7);
+    r.setAttribute('width', bw); r.setAttribute('height', 14);
+    r.setAttribute('rx', '3'); r.setAttribute('fill', 'white');
+    r.setAttribute('stroke', '#d2d0ce'); r.setAttribute('stroke-width', '0.5');
+    r.setAttribute('opacity', '0.95');
+    t.setAttribute('x', el.x); t.setAttribute('y', el.y+3);
+    t.setAttribute('text-anchor', 'middle'); t.setAttribute('font-size', '8');
+    t.setAttribute('fill', '#605e5c'); t.setAttribute('font-family', 'Segoe UI, sans-serif');
+    t.textContent = el.label;
+    g.appendChild(r); g.appendChild(t);
     root.appendChild(g);
   }});
 
