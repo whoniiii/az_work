@@ -113,6 +113,29 @@ AskUserQuestion({
 ```
 프로젝트 이름은 Bicep 출력 폴더명, 다이어그램 저장 경로, 배포 이름 등에 사용된다.
 
+**🔹 아키텍처 가이던스 사전 조회 (질문 깊이 조정):**
+
+사용자의 워크로드 유형이 파악되면, 다이어그램을 그리기 전에
+`architecture-guidance-sources.md`의 decision rule에 따라
+해당 워크로드의 reference architecture 문서를 최대 2개 targeted fetch한다.
+
+**목적**: SKU/region 같은 스펙 질문만이 아니라,
+공식 아키텍처가 권장하는 **설계 판단 포인트**를 질문에 반영하는 것.
+
+**예시 — "RAG 챗봇" 요청 시:**
+- Baseline Foundry Chat Architecture(A6) fetch
+- 문서에서 권장하는 설계 판단 포인트 추출:
+  → 네트워크 격리 수준 (full private vs hybrid?)
+  → 인증 방식 (managed identity vs API key?)
+  → 데이터 수집 전략 (push vs pull indexing?)
+  → 모니터링 범위 (Application Insights 필요 여부?)
+- 이 포인트들을 사용자 질문에 자연스럽게 포함
+
+**주의:**
+- architecture guidance에서 추출하는 것은 **"질문할 포인트"**이지 "정답"이 아님
+- SKU/API version/region 같은 배포 스펙은 여전히 `azure-dynamic-sources.md` 경로로만 결정
+- fetch budget: 최대 2개 문서. 전체 순회 금지
+
 **확정 필요 항목:**
 - [ ] 프로젝트 이름 (기본값: `azure-project`)
 - [ ] 서비스 목록 (어떤 Azure 서비스를 쓸 것인지)
@@ -324,6 +347,18 @@ PE의 groupId는 서비스별로 다르다. `references/service-gotchas.md`의 P
 
 **Phase 1의 존재 이유는 "실현 가능한 아키텍처"를 확정하는 것이다.**
 **사용자가 무엇을 요청하든, 다이어그램에 반영하기 전에 반드시 MS Docs를 WebFetch로 직접 조회하여 그것이 실제로 가능한지 팩트 체크한다.**
+
+**설계 방향 vs 배포 스펙 — 정보 경로 분리:**
+
+| 판단 유형 | 참조 경로 | 예시 |
+|----------|----------|------|
+| **설계 방향** (아키텍처 패턴, best practice, 서비스 조합) | `references/architecture-guidance-sources.md` → targeted fetch | "RAG 권장 구조는?", "enterprise baseline은?" |
+| **배포 스펙** (API version, SKU, region, model, PE mapping) | `references/azure-dynamic-sources.md` → MS Docs fetch | "API version 뭐야?", "이 모델 Korea Central에서 되나?" |
+
+- **설계 방향은 architecture guidance, 실제 배포값은 dynamic sources.** 이 두 경로를 혼용하지 않는다.
+- Architecture guidance 문서의 내용으로 SKU/API version/region을 결정하지 않는다.
+- **매 요청마다 Architecture Center 하위 문서를 싹 다 뒤지지 않는다.** 트리거 기반으로 관련 문서 최대 2개만 targeted fetch한다.
+- 트리거/fetch budget/질문 유형별 decision rule은 `architecture-guidance-sources.md`를 참조한다.
 
 **이 원칙은 예외 없이 모든 요청에 적용된다:**
 - 모델 추가/변경 → MS Docs에서 해당 모델이 존재하는지, 해당 리전에서 배포 가능한지 확인
@@ -672,6 +707,7 @@ az group delete --name <RG_NAME> --yes --no-wait
 |------|------|----------|
 | `references/azure-common-patterns.md` | PE/보안/명명 등 공통 패턴 | Stable |
 | `references/azure-dynamic-sources.md` | MS Docs URL 레지스트리 (값 아닌 출처만) | Dynamic source |
+| `references/architecture-guidance-sources.md` | 공식 아키텍처 가이던스 source registry (설계 방향 판단용) | Source registry |
 | `references/service-gotchas.md` | 비직관적 필수 속성, 흔한 실수, PE 매핑 | Stable |
 | `references/domain-packs/ai-data.md` | AI/Data 서비스 구성 가이드 (v1 도메인) | Stable + Decision Rules |
 | `agents/bicep-generator.md` | Bicep 생성 규칙 + Fallback workflow | |

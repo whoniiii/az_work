@@ -150,6 +150,49 @@
         "리전 가용성 MS Docs fetch 수행"
       ],
       "references": ["SKILL.md §1-3 Delta Confirmation Rule", "domain-packs/ai-data.md §4"]
+    },
+    {
+      "id": 11,
+      "category": "architecture-guidance",
+      "prompt": "RAG 챗봇을 best practice 기준으로 설계해줘. Microsoft 권장 reference architecture 참고해서.",
+      "expected_output": "architecture-guidance-sources.md의 Foundry chat reference architecture(A5 또는 A6) + RAG guide(A7)를 targeted fetch (최대 2개). 설계 방향만 참고하고, SKU/API version/region은 azure-dynamic-sources.md 경로로 별도 fetch. Architecture Center 하위 문서 전체 순회 안 함.",
+      "checks": [
+        "architecture-guidance-sources.md 참조",
+        "관련 아키텍처 문서 최대 2개만 targeted fetch (A5/A6 + A7)",
+        "Architecture Center 하위 문서 전체 순회 안 함",
+        "설계 방향과 배포 스펙 경로 분리 (SKU/API version은 dynamic-sources 경로)",
+        "fetch한 문서 내용을 고정 사실로 하드코딩하지 않음",
+        "Phase 1 대화에서 architecture guidance 기반 설계 판단 질문을 포함 (단순 SKU/region 질문만이 아님)",
+        "reference architecture에서 추출한 포인트(네트워크 격리, 인증 방식, 인덱싱 전략, 모니터링 등)를 질문에 반영"
+      ],
+      "references": ["architecture-guidance-sources.md", "SKILL.md §Phase1 팩트체크"]
+    },
+    {
+      "id": 12,
+      "category": "architecture-guidance",
+      "prompt": "enterprise landing zone 고려해서 Azure AI 인프라 설계해줘. Well-Architected Framework 기준으로.",
+      "expected_output": "Well-Architected Framework(A2) + CAF Landing Zone(A3) targeted fetch (최대 2개). enterprise 거버넌스, 네트워크 토폴로지, 구독 구조 등 설계 방향만 참고. AI 서비스 구체 스펙(모델/SKU/region)은 별도 dynamic fetch.",
+      "checks": [
+        "Well-Architected Framework(A2) targeted fetch",
+        "CAF Landing Zone(A3) targeted fetch",
+        "fetch budget 2개 이내",
+        "AI/ML 도메인 문서를 불필요하게 추가 조회하지 않음",
+        "설계 방향만 참고, 배포 스펙은 dynamic-sources 경로"
+      ],
+      "references": ["architecture-guidance-sources.md", "SKILL.md §Phase1 팩트체크"]
+    },
+    {
+      "id": 13,
+      "category": "architecture-guidance",
+      "prompt": "AI Search Standard S1으로 만들어줘. Korea Central에.",
+      "expected_output": "단순 리소스 생성 요청이므로 architecture guidance 문서를 조회하지 않음. azure-dynamic-sources.md 경로로 API version, SKU 유효성만 fetch. architecture-guidance-sources.md의 트리거 조건에 해당하지 않음.",
+      "checks": [
+        "architecture guidance 문서 fetch 안 함 (트리거 미해당)",
+        "azure-dynamic-sources.md 경로로 API version fetch",
+        "SKU/region 유효성 MS Docs fetch",
+        "불필요한 Architecture Center 조회 없음"
+      ],
+      "references": ["architecture-guidance-sources.md §Fetch Trigger", "azure-dynamic-sources.md"]
     }
   ]
 }
