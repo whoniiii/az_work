@@ -16,6 +16,9 @@ output/
 !assets/*.png
 !assets/*.svg
 
+# 샘플 다이어그램 (하드코딩된 예시 값 포함 — 모델 컨텍스트 오염 방지)
+sample_*.html
+
 # 환경 설정
 .env
 *.local
