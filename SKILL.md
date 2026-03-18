@@ -329,7 +329,15 @@ elif command -v start &>/dev/null; then
 fi
 ```
 
-> **다이어그램 자동 오픈**: 다이어그램 HTML을 생성하면 반드시 브라우저에서 자동으로 연다. OS별 명령을 자동 감지한다: `open` (macOS), `wslview` 또는 `explorer.exe` (WSL2), `xdg-open` (Linux), `start` (Windows/Git Bash). 모든 다이어그램 생성 시점(01 초안, 02 프리뷰, 03 결과)에 동일하게 적용한다.
+> **🚨 다이어그램 자동 오픈 (예외 없음)**: `generate_html_diagram.py`로 HTML 파일을 생성하면 **어떤 상황이든 반드시** 브라우저에서 자동으로 연다. 이유를 불문하고, 다이어그램이 (재)생성되면 무조건 `open`/`xdg-open`/`wslview`/`start` 명령을 실행한다. 다이어그램 생성과 브라우저 오픈은 항상 하나의 bash 명령 블록 안에서 함께 실행한다.
+>
+> **적용 시점 (이것뿐 아니라, HTML 다이어그램이 생성되는 모든 시점):**
+> - Phase 1 설계 초안 (`01_arch_diagram_draft.html`)
+> - Delta Confirmation 후 다이어그램 재생성
+> - Phase 4 What-if 프리뷰 (`02_arch_diagram_preview.html`)
+> - Phase 4 배포 결과 (`03_arch_diagram_result.html`)
+> - 배포 후 아키텍처 변경 (`04_arch_diagram_update_draft.html`)
+> - 그 외 어떤 이유로든 다이어그램이 재생성되는 경우
 
 **services JSON 형식:**
 
