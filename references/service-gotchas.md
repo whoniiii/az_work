@@ -11,6 +11,7 @@
 |--------|----------|-------------|------|
 | ADLS Gen2 | `isHnsEnabled: true` | 일반 Blob Storage가 됨. 되돌릴 수 없음 | `kind: 'StorageV2'` 필수 |
 | Storage Account | 이름에 특수문자/하이픈 불가 | 배포 실패 | 소문자+숫자만, 3-24자 |
+| Foundry (AIServices) | `customSubDomainName: foundryName` | Project 생성 불가, 생성 후 변경 불가 → 리소스 삭제 후 재생성 필요 | 글로벌 고유값 |
 | Foundry (AIServices) | `allowProjectManagement: true` | Foundry Project 생성 불가 | `kind: 'AIServices'` |
 | Foundry (AIServices) | `identity: { type: 'SystemAssigned' }` | Project 생성 시 실패 | |
 | Foundry Project | Foundry resource와 반드시 세트 생성 | 포털에서 사용 불가 | `accounts/projects` |
@@ -66,6 +67,7 @@
 | PE 서브넷 | 정책 미설정 | `privateEndpointNetworkPolicies: 'Disabled'` |
 | DNS Zone Group | PE만 생성 | PE + DNS Zone + VNet Link + DNS Zone Group |
 | Foundry resource | `kind: 'OpenAI'` | `kind: 'AIServices'` + `allowProjectManagement: true` |
+| Foundry resource | `customSubDomainName` 누락 | `customSubDomainName: foundryName` — 생성 후 변경 불가 |
 | Foundry Project | Foundry만 있고 Project 없음 | 반드시 세트로 생성 |
 | Key Vault 인증 | Access Policy | `enableRbacAuthorization: true` |
 | 공개 네트워크 | 설정 없음 | `publicNetworkAccess: 'Disabled'` |

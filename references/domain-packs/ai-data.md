@@ -30,6 +30,7 @@ resource foundry 'Microsoft.CognitiveServices/accounts@<fetch>' = {
   sku: { name: '<사용자 확인>' }               // ← SKU는 Phase 1에서 MS Docs 확인 후 확정
   identity: { type: 'SystemAssigned' }
   properties: {
+    customSubDomainName: foundryName  // ← 필수, 글로벌 고유값. 생성 후 변경 불가 — 누락 시 리소스 삭제 후 재생성
     allowProjectManagement: true
     publicNetworkAccess: 'Disabled'
     networkAcls: { defaultAction: 'Deny' }
