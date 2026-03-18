@@ -135,6 +135,21 @@
         "결과 보고 형식 준수 (컴파일/체크리스트/하드코딩 검사)"
       ],
       "references": ["bicep-reviewer.md §Step4", "service-gotchas.md §4"]
+    },
+    {
+      "id": 10,
+      "category": "delta-confirmation",
+      "prompt": "기존 아키텍처(Foundry + AI Search + Storage + Key Vault + PE)가 확정된 상태에서 사용자가 'Key Vault 제거하고 Fabric 추가해줘'라고 요청.",
+      "expected_output": "Key Vault 제거는 즉시 반영. Fabric 추가는 먼저 리전 가용성 확인(MS Docs fetch) 후 Fabric SKU와 admin email을 AskUserQuestion으로 확인. 확인 완료 전까지 다이어그램 확정 업데이트 안 함. 사용자가 말하지 않은 OneLake/데이터 파이프라인 등 하위 워크로드를 임의 추가하지 않음.",
+      "checks": [
+        "Fabric SKU를 AskUserQuestion으로 확인",
+        "Fabric admin email을 AskUserQuestion으로 확인",
+        "확인 완료 전 다이어그램 확정 업데이트 안 함",
+        "사용자 미언급 하위 워크로드(OneLake, 데이터 파이프라인) 임의 추가 안 함",
+        "이미 확정된 다른 서비스(Foundry, Search, Storage) 설정은 다시 묻지 않음",
+        "리전 가용성 MS Docs fetch 수행"
+      ],
+      "references": ["SKILL.md §1-3 Delta Confirmation Rule", "domain-packs/ai-data.md §4"]
     }
   ]
 }
