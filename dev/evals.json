@@ -193,6 +193,22 @@
         "불필요한 Architecture Center 조회 없음"
       ],
       "references": ["architecture-guidance-sources.md §Fetch Trigger", "azure-dynamic-sources.md"]
+    },
+    {
+      "id": 14,
+      "category": "service-discovery",
+      "prompt": "사내 문서 기반 RAG 챗봇 아키텍처에 Spark 인스턴스도 추가하고 싶은데, Azure에서 관리형 Spark 옵션 뭐가 있어?",
+      "expected_output": "WebSearch로 Azure 관리형 Spark 옵션 전체를 먼저 탐색. 최소 Microsoft Fabric Spark, Azure Databricks, Azure Synapse Spark Pool, Azure HDInsight를 발견하여 비교. v1 scope인 Fabric Spark를 누락하지 않음. 기억에서 2~3개만 나열하지 않음.",
+      "checks": [
+        "WebSearch로 카테고리 전체 탐색 수행 (직접 URL fetch만 하지 않음)",
+        "Microsoft Fabric Spark (Data Engineering 워크로드) 포함",
+        "Azure Databricks 포함",
+        "Azure Synapse Analytics Spark Pool 포함",
+        "Azure HDInsight 포함 (또는 명시적으로 deprecated/제한 사항 언급)",
+        "v1 scope 교차 확인 수행 (Fabric이 v1 범위임을 인지)",
+        "기억 기반 하드코딩 나열이 아닌 검색 기반 발견"
+      ],
+      "references": ["SKILL.md §서비스 옵션 탐색 원칙"]
     }
   ]
 }
