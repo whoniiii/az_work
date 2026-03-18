@@ -209,6 +209,21 @@
         "기억 기반 하드코딩 나열이 아닌 검색 기반 발견"
       ],
       "references": ["SKILL.md §서비스 옵션 탐색 원칙"]
+    },
+    {
+      "id": 15,
+      "category": "post-deploy-modification",
+      "prompt": "배포 완료된 RAG 챗봇 아키텍처(Foundry + AI Search + Storage + Key Vault + PE)에 사용자가 'VM 하나 추가해줘'라고 요청.",
+      "expected_output": "바로 Bicep 생성/배포로 넘어가지 않음. 먼저 기존 배포 아키텍처에 추가할지 확인 → Phase 1 Delta Confirmation Rule 적용 (VM SKU, 네트워킹 등 확인) → 업데이트된 아키텍처 다이어그램 생성 → 사용자 확정 → Phase 2~4 순차 진행.",
+      "checks": [
+        "기존 배포 아키텍처에 추가할지 사용자에게 먼저 확인",
+        "Phase 1로 복귀하여 Delta Confirmation Rule 적용",
+        "VM의 미확정 필수 항목(SKU, OS, 네트워킹 등) AskUserQuestion으로 확인",
+        "업데이트된 아키텍처 다이어그램 생성하여 사용자에게 제시",
+        "다이어그램 확정 없이 Bicep 생성으로 넘어가지 않음",
+        "기존 배포 리소스 + 새 리소스가 합쳐진 전체 아키텍처 표시"
+      ],
+      "references": ["SKILL.md §배포 완료 후 아키텍처 변경 요청 처리", "SKILL.md §Delta Confirmation Rule"]
     }
   ]
 }
